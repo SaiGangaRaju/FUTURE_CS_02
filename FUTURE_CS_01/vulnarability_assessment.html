@@ -795,7 +795,7 @@ ${d.summary}
 FINDINGS (${d.vulns.length} total):
 ${d.vulns.map((v,i)=>`${i+1}. [${v.severity}] ${v.title}\n   ${v.description}\n   Fix: ${v.remediation}`).join('\n\n')}
 
---- VulnScout | Future Interns Cyber Security Task 1 (2026) ---`;
+--- VulnScout ---`;
   navigator.clipboard.writeText(txt).then(()=>{
     const b=document.getElementById('copy-btn');b.textContent='✓ Copied!';
     setTimeout(()=>{b.textContent='📋 Copy Summary'},2000);
