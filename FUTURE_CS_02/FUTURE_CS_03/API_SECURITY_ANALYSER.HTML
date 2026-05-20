@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>APIGuard — API Security Risk Analysis System</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#070910;--bg2:#0d1117;--bg3:#13181f;--bg4:#181e28;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
+  --text:#dde1ea;--muted:#5c6370;--muted2:#8b949e;
+  --accent:#7c3aed;--accent2:#5b21b6;--accent-glow:rgba(124,58,237,0.25);
+  --critical:#ff2d55;--critical-bg:rgba(255,45,85,0.08);--critical-border:rgba(255,45,85,0.25);
+  --high:#ff6b35;--high-bg:rgba(255,107,53,0.08);--high-border:rgba(255,107,53,0.25);
+  --medium:#f59e0b;--medium-bg:rgba(245,158,11,0.08);--medium-border:rgba(245,158,11,0.25);
+  --low:#10b981;--low-bg:rgba(16,185,129,0.08);--low-border:rgba(16,185,129,0.25);
+  --info:#3b82f6;--info-bg:rgba(59,130,246,0.08);--info-border:rgba(59,130,246,0.25);
+  --mono:'Space Mono',monospace;--sans:'Syne',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(124,58,237,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(124,58,237,0.02) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
+.orb1{position:fixed;top:-150px;left:-150px;width:500px;height:500px;background:radial-gradient(circle,rgba(124,58,237,0.07) 0%,transparent 70%);pointer-events:none;z-index:0}
+.orb2{position:fixed;bottom:-150px;right:-150px;width:450px;height:450px;background:radial-gradient(circle,rgba(255,45,85,0.05) 0%,transparent 70%);pointer-events:none;z-index:0}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(7,9,16,0.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--border2);padding:0 24px}
+.nav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;height:58px;gap:0}
+.nav-logo{display:flex;align-items:center;gap:11px;font-size:18px;font-weight:800;letter-spacing:-0.4px;margin-right:28px;white-space:nowrap;flex-shrink:0}
+.nav-logo span{color:var(--accent)}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 0 16px var(--accent-glow)}
+.nav-tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{background:transparent;border:none;color:var(--muted2);font-family:var(--sans);font-size:13px;padding:6px 14px;border-radius:6px;cursor:pointer;white-space:nowrap;transition:all 0.18s}
+.nav-tab:hover{color:var(--text);background:var(--bg3)}
+.nav-tab.active{color:var(--accent);background:rgba(124,58,237,0.1)}
+.nav-right{margin-left:auto;flex-shrink:0}
+.live-badge{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--low);font-family:var(--mono);padding:4px 12px;border-radius:999px;border:1px solid var(--low-border);background:var(--low-bg)}
+.live-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--low);box-shadow:0 0 6px var(--low);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+
+/* LAYOUT */
+.page{display:none;position:relative;z-index:1;padding-bottom:48px}
+.page.active{display:block}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+.page-hero{padding:36px 0 24px;border-bottom:1px solid var(--border);margin-bottom:28px}
+.page-hero h1{font-size:24px;font-weight:800;letter-spacing:-0.5px;margin-bottom:6px}
+.page-hero h1 span{color:var(--accent)}
+.page-hero p{font-size:13px;color:var(--muted2);max-width:620px;line-height:1.7}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;overflow:hidden;margin-bottom:18px}
+.card-head{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.card-title{font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.12em;color:var(--muted2);display:flex;align-items:center;gap:7px}
+.card-title::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.card-body{padding:20px}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:22px}
+.stat{background:var(--bg2);padding:16px 12px;text-align:center}
+.stat-n{font-size:22px;font-weight:800;font-family:var(--mono)}
+.stat-l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-top:3px}
+
+/* FORM */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.form-row3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted2);font-family:var(--mono)}
+.field input,.field textarea,.field select{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;width:100%;resize:none}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,58,237,0.12)}
+.field select option{background:var(--bg3)}
+.field textarea{min-height:90px;line-height:1.6}
+
+/* BUTTONS */
+.btn{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:9px;padding:11px 22px;color:#fff;font-size:13px;font-weight:700;font-family:var(--sans);cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:all 0.2s;box-shadow:0 4px 14px var(--accent-glow)}
+.btn:hover{transform:translateY(-1px);box-shadow:0 6px 22px var(--accent-glow)}
+.btn:disabled{opacity:0.45;cursor:not-allowed;transform:none}
+.btn-ghost{background:transparent;border:1px solid var(--border2);border-radius:9px;padding:10px 18px;color:var(--muted2);font-family:var(--sans);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all 0.18s}
+.btn-ghost:hover{color:var(--text);background:var(--bg3);border-color:var(--border2)}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.spin{display:none;width:14px;height:14px;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* SEVERITY BADGES */
+.sev{padding:3px 10px;border-radius:5px;font-size:11px;font-family:var(--mono);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;display:inline-block}
+.sev.critical{background:var(--critical-bg);border:1px solid var(--critical-border);color:var(--critical)}
+.sev.high{background:var(--high-bg);border:1px solid var(--high-border);color:var(--high)}
+.sev.medium{background:var(--medium-bg);border:1px solid var(--medium-border);color:var(--medium)}
+.sev.low{background:var(--low-bg);border:1px solid var(--low-border);color:var(--low)}
+.sev.info{background:var(--info-bg);border:1px solid var(--info-border);color:var(--info)}
+
+/* RISK ITEMS */
+.risk-item{border-radius:10px;overflow:hidden;border:1px solid;margin-bottom:12px;animation:fadeUp 0.35s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.risk-item.critical{border-color:var(--critical-border);background:var(--critical-bg)}
+.risk-item.high{border-color:var(--high-border);background:var(--high-bg)}
+.risk-item.medium{border-color:var(--medium-border);background:var(--medium-bg)}
+.risk-item.low{border-color:var(--low-border);background:var(--low-bg)}
+.risk-item.info{border-color:var(--info-border);background:var(--info-bg)}
+.risk-head{padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.risk-head-title{font-size:13px;font-weight:700;flex:1}
+.risk-body{padding:0 16px 14px;display:none}
+.risk-body.open{display:block}
+.risk-desc{font-size:13px;color:var(--muted2);line-height:1.7;margin-bottom:10px}
+.risk-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.risk-meta-box{background:rgba(0,0,0,0.25);border-radius:7px;padding:10px 12px}
+.risk-meta-box h4{font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:5px}
+.risk-meta-box p{font-size:12px;color:var(--text);line-height:1.6}
+
+/* RESPONSE VIEWER */
+.resp-box{background:var(--bg);border:1px solid var(--border2);border-radius:9px;overflow:hidden;margin-top:14px}
+.resp-head{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.resp-title{font-size:11px;font-family:var(--mono);color:var(--muted2);text-transform:uppercase;letter-spacing:0.08em}
+.resp-pills{display:flex;gap:6px;flex-wrap:wrap}
+.resp-pill{font-size:11px;padding:2px 9px;border-radius:4px;font-family:var(--mono)}
+.resp-body{padding:14px;font-family:var(--mono);font-size:12px;line-height:1.7;max-height:260px;overflow-y:auto;color:#a8b8d0;white-space:pre-wrap;word-break:break-all}
+.resp-body::-webkit-scrollbar{width:5px}
+.resp-body::-webkit-scrollbar-track{background:transparent}
+.resp-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* HEADERS TABLE */
+.hdr-table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+.hdr-table td{padding:7px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.hdr-table td:first-child{color:var(--muted2);width:38%;word-break:break-word}
+.hdr-table td:last-child{color:var(--text);word-break:break-all}
+.hdr-table tr:last-child td{border-bottom:none}
+.hdr-flag{display:inline-block;margin-left:6px;font-size:10px;padding:1px 6px;border-radius:3px}
+.hdr-flag.miss{background:var(--critical-bg);border:1px solid var(--critical-border);color:var(--critical)}
+.hdr-flag.weak{background:var(--medium-bg);border:1px solid var(--medium-border);color:var(--medium)}
+.hdr-flag.ok{background:var(--low-bg);border:1px solid var(--low-border);color:var(--low)}
+
+/* TWO COL */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px}
+
+/* OWASP PAGE */
+.owasp-item{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:16px 18px;margin-bottom:12px}
+.owasp-num{font-size:11px;font-family:var(--mono);color:var(--accent);margin-bottom:4px}
+.owasp-title{font-size:14px;font-weight:700;margin-bottom:6px}
+.owasp-desc{font-size:13px;color:var(--muted2);line-height:1.7;margin-bottom:8px}
+.owasp-check{font-size:12px;color:var(--low);font-family:var(--mono)}
+
+/* PRESET CHIP */
+.preset-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.preset{border:1px solid var(--border2);background:transparent;border-radius:999px;padding:5px 14px;font-size:12px;color:var(--muted2);cursor:pointer;font-family:var(--sans);transition:all 0.18s}
+.preset:hover{border-color:var(--accent);color:var(--accent);background:rgba(124,58,237,0.07)}
+
+/* REPORT PAGE */
+.report-section{margin-bottom:24px}
+.report-section h3{font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.report-table{width:100%;border-collapse:collapse;font-size:13px}
+.report-table th{text-align:left;padding:9px 14px;background:var(--bg3);font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.08em;color:var(--muted2);border-bottom:1px solid var(--border)}
+.report-table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.6}
+.report-table tr:last-child td{border-bottom:none}
+
+/* CHECKLIST */
+.check-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.check-item{display:flex;align-items:flex-start;gap:9px;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;font-size:13px;line-height:1.5;cursor:pointer;transition:border-color 0.18s}
+.check-item:hover{border-color:var(--border2)}
+.check-item input{accent-color:var(--accent);width:14px;height:14px;flex-shrink:0;margin-top:1px}
+
+footer{padding:22px 24px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:relative;z-index:1}
+.footer-txt{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.footer-tags{display:flex;gap:8px}
+.footer-tag{font-size:10px;padding:2px 9px;border-radius:999px;border:1px solid var(--border);color:var(--muted);font-family:var(--mono)}
+
+@media(max-width:700px){
+  .form-row,.form-row3,.two-col,.three-col,.check-grid{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:1fr 1fr 1fr}
+  .stat:nth-child(4),.stat:nth-child(5){display:none}
+}
+</style>
+</head>
+<body>
+<div class="orb1"></div><div class="orb2"></div>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo"><div class="logo-icon">⚡</div>API<span>Guard</span></div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showPage('scan')">🔍 Live Scanner</button>
+      <button class="nav-tab" onclick="showPage('report')">📊 Risk Report</button>
+      <button class="nav-tab" onclick="showPage('owasp')">🛡 OWASP Top 10</button>
+      <button class="nav-tab" onclick="showPage('checklist')">✅ Audit Checklist</button>
+    </div>
+    <div class="nav-right"><div class="live-badge">Live Testing</div></div>
+  </div>
+</nav>
+
+<!-- ══════════════ SCAN PAGE ══════════════ -->
+<div class="page active" id="page-scan">
+<div class="wrap">
+  <div class="page-hero">
+    <h1>API Security <span>Live Scanner</span></h1>
+    <p>Test public or demo APIs in real-time. Inspects authentication, headers, response data exposure, and identifies OWASP API Security Top 10 risks.</p>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat"><div class="stat-n" id="st-scans">0</div><div class="stat-l">Scans Run</div></div>
+    <div class="stat"><div class="stat-n" id="st-crit" style="color:var(--critical)">0</div><div class="stat-l">Critical</div></div>
+    <div class="stat"><div class="stat-n" id="st-high" style="color:var(--high)">0</div><div class="stat-l">High</div></div>
+    <div class="stat"><div class="stat-n" id="st-med" style="color:var(--medium)">0</div><div class="stat-l">Medium</div></div>
+    <div class="stat"><div class="stat-n" id="st-low" style="color:var(--low)">0</div><div class="stat-l">Low</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">API Endpoint Configuration</div>
+    </div>
+    <div class="card-body">
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--muted2);font-family:var(--mono);margin-bottom:8px">QUICK PRESETS — Safe public APIs for testing:</div>
+        <div class="preset-chips">
+          <button class="preset" onclick="loadPreset('jp-users')">JSONPlaceholder /users</button>
+          <button class="preset" onclick="loadPreset('jp-posts')">JSONPlaceholder /posts</button>
+          <button class="preset" onclick="loadPreset('rr-users')">ReqRes /users</button>
+          <button class="preset" onclick="loadPreset('rr-login')">ReqRes /login</button>
+          <button class="preset" onclick="loadPreset('rr-unknown')">ReqRes /unknown</button>
+          <button class="preset" onclick="loadPreset('cat-api')">Cat Facts API</button>
+        </div>
+      </div>
+      <div class="form-row3">
+        <div class="field">
+          <label>API Endpoint URL</label>
+          <input id="f-url" type="text" placeholder="https://jsonplaceholder.typicode.com/users"/>
+        </div>
+        <div class="field">
+          <label>HTTP Method</label>
+          <select id="f-method">
+            <option>GET</option>
+            <option>POST</option>
+            <option>PUT</option>
+            <option>DELETE</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Auth Token (optional)</label>
+          <input id="f-token" type="text" placeholder="Bearer eyJ..."/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Request Body (JSON, for POST/PUT)</label>
+          <textarea id="f-body" placeholder='{"email":"test@test.com","password":"test123"}'></textarea>
+        </div>
+        <div class="field">
+          <label>Custom Headers (one per line: Key: Value)</label>
+          <textarea id="f-headers" placeholder="X-API-Key: mykey123&#10;Content-Type: application/json"></textarea>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="scan-btn" onclick="runScan()">
+          <span>⚡</span><span id="scan-lbl">Run Security Scan</span><div class="spin" id="spin"></div>
+        </button>
+        <button class="btn-ghost" onclick="clearScan()">✕ Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="scan-results" style="display:none">
+
+    <!-- Response Info -->
+    <div class="two-col">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-head"><div class="card-title">HTTP Response</div></div>
+        <div class="card-body" style="padding:14px">
+          <div id="resp-meta" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
+          <div class="resp-box">
+            <div class="resp-head">
+              <div class="resp-title">Response Body</div>
+              <div class="resp-pills" id="resp-size-info"></div>
+            </div>
+            <div class="resp-body" id="resp-body-view">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-head"><div class="card-title">Security Headers</div></div>
+        <div class="card-body" style="padding:0">
+          <table class="hdr-table" id="hdr-table"><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:18px"></div>
+
+    <!-- Risk Summary Bar -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Risk Assessment Summary</div>
+        <div id="overall-badge"></div>
+      </div>
+      <div class="card-body">
+        <div id="risk-summary-text" style="font-size:13px;color:var(--muted2);line-height:1.7;margin-bottom:14px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap" id="risk-counts"></div>
+      </div>
+    </div>
+
+    <!-- Risk Items -->
+    <div id="risk-list"></div>
+
+    <div class="btn-row" style="margin-bottom:32px">
+      <button class="btn-ghost" onclick="addToReport()">📊 Add to Report</button>
+      <button class="btn-ghost" onclick="copyFindings()" id="copy-btn">📋 Copy Findings</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════ REPORT PAGE ══════════════ -->
+<div class="page" id="page-report">
+<div class="wrap">
+  <div class="page-hero">
+    <h1>API Security <span>Risk Report</span></h1>
+    <p>Professional security report compiled from your scan results. Ready to submit to GitHub or export as documentation.</p>
+  </div>
+
+  <div id="report-empty" class="card">
+    <div class="card-body" style="text-align:center;padding:48px 24px;color:var(--muted2)">
+      <div style="font-size:36px;margin-bottom:14px">📊</div>
+      <div style="font-size:14px;margin-bottom:8px">No scans added to report yet</div>
+      <div style="font-size:13px">Run a scan on the Live Scanner tab, then click "Add to Report"</div>
+    </div>
+  </div>
+
+  <div id="report-content" style="display:none">
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-head"><div class="card-title">Report Metadata</div></div>
+      <div class="card-body">
+        <div class="form-row">
+          <div class="field"><label>Analyst Name</label><input id="r-analyst" type="text" placeholder="Your Name"/></div>
+          <div class="field"><label>Organization / Internship</label><input id="r-org" type="text" placeholder="Future Interns — Cyber Security Task 3"/></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Scope</label><input id="r-scope" type="text" placeholder="Public demo APIs — JSONPlaceholder, ReqRes"/></div>
+          <div class="field"><label>Date</label><input id="r-date" type="text" placeholder="May 20, 2026"/></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Full Security Report</div>
+        <div class="btn-row" style="gap:8px">
+          <button class="btn-ghost" style="font-size:12px;padding:6px 14px" onclick="copyFullReport()">📋 Copy Report</button>
+          <button class="btn-ghost" style="font-size:12px;padding:6px 14px" onclick="printReport()">🖨 Print / Save PDF</button>
+        </div>
+      </div>
+      <div class="card-body" id="report-body"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════ OWASP PAGE ══════════════ -->
+<div class="page" id="page-owasp">
+<div class="wrap">
+  <div class="page-hero">
+    <h1>OWASP API Security <span>Top 10</span></h1>
+    <p>The industry-standard reference for API vulnerabilities. Understanding these is core to any API security audit.</p>
+  </div>
+  <div id="owasp-list"></div>
+</div>
+</div>
+
+<!-- ══════════════ CHECKLIST PAGE ══════════════ -->
+<div class="page" id="page-checklist">
+<div class="wrap">
+  <div class="page-hero">
+    <h1>API Security <span>Audit Checklist</span></h1>
+    <p>Systematic checklist based on real-world API security audits. Use this alongside your scan to ensure complete coverage.</p>
+  </div>
+
+  <div id="checklist-sections"></div>
+
+  <div class="card" style="margin-bottom:32px">
+    <div class="card-head"><div class="card-title">Audit Progress</div></div>
+    <div class="card-body">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:13px;color:var(--muted2)">Items completed</span>
+        <span style="font-size:13px;font-family:var(--mono);color:var(--accent)" id="cl-progress">0 / 0</span>
+      </div>
+      <div style="height:8px;background:var(--bg3);border-radius:999px;overflow:hidden">
+        <div id="cl-bar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--low));border-radius:999px;width:0%;transition:width 0.4s ease"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<footer>
+  <div class="footer-txt">APIGuard v1.0 — API Security Risk Analysis System — Future Interns Cyber Security Task 3 (2026)</div>
+  <div class="footer-tags">
+    <span class="footer-tag">OWASP Top 10</span>
+    <span class="footer-tag">API Security</span>
+    <span class="footer-tag">AppSec</span>
+  </div>
+</footer>
+
+<script>
+// ── PAGE NAV ──
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── STATS ──
+const counts={scans:0,critical:0,high:0,medium:0,low:0};
+function updateStats(risks){
+  counts.scans++;
+  risks.forEach(r=>{
+    const s=r.severity.toLowerCase();
+    if(counts[s]!==undefined)counts[s]++;
+  });
+  document.getElementById('st-scans').textContent=counts.scans;
+  document.getElementById('st-crit').textContent=counts.critical;
+  document.getElementById('st-high').textContent=counts.high;
+  document.getElementById('st-med').textContent=counts.medium;
+  document.getElementById('st-low').textContent=counts.low;
+}
+
+// ── PRESETS ──
+const presets={
+  'jp-users':{url:'https://jsonplaceholder.typicode.com/users',method:'GET',body:'',headers:''},
+  'jp-posts':{url:'https://jsonplaceholder.typicode.com/posts',method:'GET',body:'',headers:''},
+  'rr-users':{url:'https://reqres.in/api/users',method:'GET',body:'',headers:''},
+  'rr-login':{url:'https://reqres.in/api/login',method:'POST',body:'{"email":"eve.holt@reqres.in","password":"cityslicka"}',headers:'Content-Type: application/json'},
+  'rr-unknown':{url:'https://reqres.in/api/unknown',method:'GET',body:'',headers:''},
+  'cat-api':{url:'https://catfact.ninja/fact',method:'GET',body:'',headers:''}
+};
+function loadPreset(k){
+  const p=presets[k];
+  document.getElementById('f-url').value=p.url;
+  document.getElementById('f-method').value=p.method;
+  document.getElementById('f-body').value=p.body;
+  document.getElementById('f-headers').value=p.headers;
+}
+function clearScan(){
+  document.getElementById('f-url').value='';
+  document.getElementById('f-body').value='';
+  document.getElementById('f-headers').value='';
+  document.getElementById('f-token').value='';
+  document.getElementById('scan-results').style.display='none';
+}
+
+// ── SECURITY HEADER CHECKS ──
+const SEC_HEADERS=[
+  {key:'strict-transport-security',label:'Strict-Transport-Security',required:true,desc:'Enforces HTTPS — prevents downgrade attacks'},
+  {key:'x-content-type-options',label:'X-Content-Type-Options',required:true,desc:'Prevents MIME-type sniffing'},
+  {key:'x-frame-options',label:'X-Frame-Options',required:false,desc:'Clickjacking protection'},
+  {key:'content-security-policy',label:'Content-Security-Policy',required:false,desc:'Prevents XSS and injection attacks'},
+  {key:'x-xss-protection',label:'X-XSS-Protection',required:false,desc:'Legacy XSS filter'},
+  {key:'cache-control',label:'Cache-Control',required:false,desc:'Controls caching of sensitive responses'},
+  {key:'access-control-allow-origin',label:'Access-Control-Allow-Origin',required:false,desc:'CORS policy — check for wildcard (*)'},
+  {key:'referrer-policy',label:'Referrer-Policy',required:false,desc:'Controls referrer information sent with requests'},
+  {key:'permissions-policy',label:'Permissions-Policy',required:false,desc:'Controls browser features access'},
+  {key:'x-powered-by',label:'X-Powered-By',required:false,desc:'Should be REMOVED — reveals server tech stack',leak:true},
+  {key:'server',label:'Server',required:false,desc:'Should be REMOVED or obscured — reveals server software',leak:true},
+];
+
+// ── SENSITIVE DATA PATTERNS ──
+const SENSITIVE_PATTERNS=[
+  {regex:/"password"\s*:/i,label:'Password field exposed',severity:'Critical'},
+  {regex:/"ssn"\s*:/i,label:'SSN/Social security number exposed',severity:'Critical'},
+  {regex:/"credit_card"\s*|"card_number"\s*:/i,label:'Credit card data exposed',severity:'Critical'},
+  {regex:/"secret"\s*:/i,label:'Secret field in response',severity:'High'},
+  {regex:/"api_key"\s*:|"apikey"\s*:/i,label:'API key in response body',severity:'High'},
+  {regex:/"token"\s*:/i,label:'Token in response body — verify if sensitive',severity:'Medium'},
+  {regex:/"email"\s*:/i,label:'Email addresses exposed in response',severity:'Medium'},
+  {regex:/"phone"\s*:|"mobile"\s*:/i,label:'Phone numbers exposed',severity:'Medium'},
+  {regex:/"address"\s*:|"street"\s*:/i,label:'Physical address data exposed',severity:'Low'},
+  {regex:/"dob"\s*:|"date_of_birth"\s*:/i,label:'Date of birth exposed',severity:'Medium'},
+  {regex:/"lat"\s*:|"lng"\s*:|"latitude"\s*:/i,label:'GPS coordinates in response',severity:'Low'},
+];
+
+let lastScanData=null;
+let reportScans=[];
+
+// ── MAIN SCAN ──
+async function runScan(){
+  const url=document.getElementById('f-url').value.trim();
+  const method=document.getElementById('f-method').value;
+  const token=document.getElementById('f-token').value.trim();
+  const bodyTxt=document.getElementById('f-body').value.trim();
+  const headersTxt=document.getElementById('f-headers').value.trim();
+
+  if(!url){alert('Please enter an API endpoint URL.');return}
+
+  const btn=document.getElementById('scan-btn');
+  btn.disabled=true;
+  document.getElementById('scan-lbl').textContent='Scanning…';
+  document.getElementById('spin').style.display='block';
+  document.getElementById('scan-results').style.display='none';
+
+  // Build fetch options
+  const fetchHeaders={'Accept':'application/json'};
+  if(token)fetchHeaders['Authorization']=token.startsWith('Bearer ')?token:'Bearer '+token;
+  if(bodyTxt)fetchHeaders['Content-Type']='application/json';
+  headersTxt.split('\n').forEach(line=>{
+    const [k,...v]=line.split(':');
+    if(k&&v.length)fetchHeaders[k.trim()]=v.join(':').trim();
+  });
+  const fetchOpts={method,headers:fetchHeaders};
+  if(bodyTxt&&(method==='POST'||method==='PUT'))fetchOpts.body=bodyTxt;
+
+  let respData={status:0,statusText:'',headers:{},body:'',ok:false,latency:0,size:0};
+  const t0=Date.now();
+  try{
+    const res=await fetch(url,fetchOpts);
+    respData.latency=Date.now()-t0;
+    respData.status=res.status;
+    respData.statusText=res.statusText;
+    respData.ok=res.ok;
+    res.headers.forEach((v,k)=>{respData.headers[k]=v});
+    const txt=await res.text();
+    respData.body=txt;
+    respData.size=new Blob([txt]).size;
+  }catch(e){
+    respData.body='Error: '+e.message+'\n\nNote: Some APIs block cross-origin requests (CORS). This itself is a security observation.';
+    respData.status=0;
+    respData.statusText='CORS / Network Error';
+    respData.isCorsError=true;
+  }
+
+  // ── AI RISK ANALYSIS ──
+  const prompt=`You are a senior API security consultant performing a security audit. Analyze the API test result below and return ONLY valid JSON — no markdown, no backticks.
+
+API TESTED:
+URL: ${url}
+Method: ${method}
+Status: ${respData.status} ${respData.statusText}
+Has Auth Token: ${!!token}
+Latency: ${respData.latency}ms
+Response Size: ${respData.size} bytes
+Response Headers: ${JSON.stringify(respData.headers,null,2)}
+Response Body (first 1500 chars): ${respData.body.slice(0,1500)}
+CORS Error: ${respData.isCorsError||false}
+
+Return exactly:
+{
+  "overall_severity": "Critical"|"High"|"Medium"|"Low"|"Info",
+  "summary": "<2-3 sentence business-language summary of the API's security posture>",
+  "risks": [
+    {
+      "id": "API1"|"API2"|"API3"|"API4"|"API5"|"API6"|"API7"|"API8"|"API9"|"API10"|"CUSTOM",
+      "owasp_name": "<OWASP category or custom name>",
+      "title": "<short risk title>",
+      "severity": "Critical"|"High"|"Medium"|"Low"|"Info",
+      "description": "<what the risk is and why it matters, in plain business language>",
+      "evidence": "<specific evidence from this API response — actual values, headers, fields>",
+      "business_impact": "<what could happen to the business if exploited>",
+      "remediation": "<specific fix or recommendation>"
+    }
+  ],
+  "positive_findings": ["<security positive finding>"],
+  "owasp_coverage": ["<OWASP API IDs checked, e.g. API1, API2>"]
+}
+
+Check for ALL of these and include as risks if found:
+- Missing or misconfigured auth (API2)
+- Excessive data exposure — PII, emails, internal IDs, location data in response (API3)
+- Missing rate limiting (API4)
+- Missing security headers: HSTS, X-Content-Type-Options, CSP (API7)
+- CORS misconfiguration — wildcard (*) in Access-Control-Allow-Origin (API7)
+- Server/technology disclosure in headers (API7)
+- Sensitive fields in response: passwords, tokens, secrets (API3)
+- HTTP vs HTTPS (API7)
+- Verbose error messages leaking stack traces (API3)
+- Large response with unnecessary data fields (API3)
+- Missing authentication on endpoint that returns user data (API2)
+Include Info-level findings for observations. Minimum 4 risks.`;
+
+  let aiRisks=[];
+  let aiSummary='Analysis based on response inspection.';
+  let aiOverall='Medium';
+  let aiPositives=[];
+  try{
+    const aiRes=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:prompt}]})
+    });
+    const aiData=await aiRes.json();
+    const raw=aiData.content.map(b=>b.text||'').join('');
+    const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    aiRisks=parsed.risks||[];
+    aiSummary=parsed.summary||aiSummary;
+    aiOverall=parsed.overall_severity||'Medium';
+    aiPositives=parsed.positive_findings||[];
+  }catch(e){console.error('AI error',e)}
+
+  // ── Also do local header checks ──
+  SEC_HEADERS.forEach(sh=>{
+    const val=respData.headers[sh.key];
+    if(sh.leak&&val){
+      aiRisks.push({id:'API7',owasp_name:'Security Misconfiguration',title:'Technology Stack Disclosure: '+sh.label,severity:'Medium',description:`The ${sh.label} header reveals server technology to attackers, helping them target known vulnerabilities.`,evidence:`${sh.label}: ${val}`,business_impact:'Attackers can target known CVEs for the disclosed technology.',remediation:`Remove or obscure the ${sh.label} response header on the server.`});
+    }
+  });
+
+  // CORS wildcard check
+  const corsVal=respData.headers['access-control-allow-origin'];
+  if(corsVal==='*'&&!aiRisks.find(r=>r.title&&r.title.toLowerCase().includes('cors'))){
+    aiRisks.push({id:'API7',owasp_name:'Security Misconfiguration',title:'CORS Wildcard — Any Origin Allowed',severity:'High',description:'Access-Control-Allow-Origin is set to * meaning any website can make cross-origin requests to this API and read the response.',evidence:'Access-Control-Allow-Origin: *',business_impact:'Malicious websites can steal data from authenticated users by making cross-origin requests.',remediation:'Replace * with explicit allowed origins. Use a whitelist of trusted domains.'});
+  }
+
+  // Not HTTPS
+  if(url.startsWith('http://')&&!respData.isCorsError){
+    aiRisks.push({id:'API7',owasp_name:'Security Misconfiguration',title:'Unencrypted HTTP Endpoint',severity:'Critical',description:'API is served over plain HTTP. All data including tokens and sensitive fields are transmitted in cleartext.',evidence:'URL scheme: http://',business_impact:'Man-in-the-middle attackers can intercept and read all API traffic.',remediation:'Enforce HTTPS. Redirect all HTTP requests to HTTPS. Obtain a TLS certificate.'});
+  }
+
+  // Sensitive patterns in body
+  SENSITIVE_PATTERNS.forEach(p=>{
+    if(p.regex.test(respData.body)&&!aiRisks.find(r=>r.title&&r.title.includes(p.label))){
+      aiRisks.push({id:'API3',owasp_name:'Excessive Data Exposure',title:p.label,severity:p.severity,description:`The API response contains ${p.label.toLowerCase()}.`,evidence:'Pattern detected in response body',business_impact:'Sensitive data exposure can lead to privacy violations and regulatory fines.',remediation:'Apply response filtering. Only return data fields the client actually needs.'});
+    }
+  });
+
+  // Sort by severity
+  const sevOrder={Critical:0,High:1,Medium:2,Low:3,Info:4};
+  aiRisks.sort((a,b)=>(sevOrder[a.severity]||4)-(sevOrder[b.severity]||4));
+
+  lastScanData={url,method,status:respData.status,statusText:respData.statusText,latency:respData.latency,size:respData.size,headers:respData.headers,body:respData.body,risks:aiRisks,summary:aiSummary,overall:aiOverall,positives:aiPositives,timestamp:new Date().toLocaleString()};
+
+  renderScanResults(respData,aiRisks,aiSummary,aiOverall,aiPositives);
+  updateStats(aiRisks);
+
+  btn.disabled=false;
+  document.getElementById('scan-lbl').textContent='Run Security Scan';
+  document.getElementById('spin').style.display='none';
+}
+
+function renderScanResults(resp,risks,summary,overall,positives){
+  // Response meta pills
+  const statusColor=resp.status>=200&&resp.status<300?'var(--low)':resp.status>=400?'var(--high)':'var(--medium)';
+  document.getElementById('resp-meta').innerHTML=
+    `<span class="resp-pill" style="background:rgba(0,0,0,0.3);border:1px solid var(--border2);color:${statusColor}">${resp.status||'ERR'} ${resp.statusText}</span>`+
+    `<span class="resp-pill" style="background:rgba(0,0,0,0.3);border:1px solid var(--border2);color:var(--muted2)">${resp.latency}ms</span>`+
+    `<span class="resp-pill" style="background:rgba(0,0,0,0.3);border:1px solid var(--border2);color:var(--muted2)">${formatBytes(resp.size)}</span>`;
+
+  // Response body
+  let displayBody=resp.body||'(empty)';
+  try{displayBody=JSON.stringify(JSON.parse(resp.body),null,2)}catch(e){}
+  document.getElementById('resp-body-view').textContent=displayBody.slice(0,3000)+(resp.body.length>3000?'\n\n[truncated…]':'');
+  document.getElementById('resp-size-info').innerHTML=`<span class="resp-pill" style="font-size:10px;background:rgba(0,0,0,0.3);border:1px solid var(--border2);color:var(--muted2)">${resp.size} bytes</span>`;
+
+  // Security headers table
+  const tbody=document.querySelector('#hdr-table tbody');
+  tbody.innerHTML='';
+  SEC_HEADERS.forEach(sh=>{
+    const val=resp.headers[sh.key];
+    const present=!!val;
+    let flag='';
+    if(sh.leak&&present)flag='<span class="hdr-flag weak">⚠ leak</span>';
+    else if(!present&&sh.required)flag='<span class="hdr-flag miss">✕ missing</span>';
+    else if(!present&&!sh.leak)flag='<span class="hdr-flag weak">— absent</span>';
+    else if(present&&!sh.leak)flag='<span class="hdr-flag ok">✓</span>';
+
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${sh.label}${flag}</td><td style="color:${sh.leak&&present?'var(--medium)':present?'var(--low)':'var(--muted)'}">${val||'not present'}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Overall badge
+  const overallColor={'Critical':'var(--critical)','High':'var(--high)','Medium':'var(--medium)','Low':'var(--low)','Info':'var(--info)'}[overall]||'var(--medium)';
+  document.getElementById('overall-badge').innerHTML=`<span class="sev ${overall.toLowerCase()}">${overall} Risk</span>`;
+  document.getElementById('risk-summary-text').innerHTML=summary+(positives.length?`<br><br><strong style="color:var(--low)">✓ Positives:</strong> ${positives.join(' · ')}`:'');
+
+  // Risk counts
+  const rc={};
+  risks.forEach(r=>{rc[r.severity]=(rc[r.severity]||0)+1});
+  document.getElementById('risk-counts').innerHTML=
+    Object.entries(rc).map(([s,n])=>`<span class="sev ${s.toLowerCase()}">${n} ${s}</span>`).join('');
+
+  // Risk list
+  document.getElementById('risk-list').innerHTML=risks.map((r,i)=>`
+    <div class="risk-item ${r.severity.toLowerCase()}" id="ri-${i}">
+      <div class="risk-head" onclick="toggleRisk(${i})">
+        <span class="sev ${r.severity.toLowerCase()}">${r.severity}</span>
+        <div class="risk-head-title">${r.title}</div>
+        <span style="font-size:11px;font-family:var(--mono);color:var(--muted2)">${r.id}</span>
+        <span style="font-size:14px;color:var(--muted2)">▾</span>
+      </div>
+      <div class="risk-body" id="rb-${i}">
+        <div class="risk-desc">${r.description}</div>
+        <div class="risk-meta-grid">
+          <div class="risk-meta-box"><h4>Evidence</h4><p>${r.evidence}</p></div>
+          <div class="risk-meta-box"><h4>Business Impact</h4><p>${r.business_impact}</p></div>
+          <div class="risk-meta-box" style="grid-column:1/-1"><h4>Remediation</h4><p>${r.remediation}</p></div>
+        </div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('scan-results').style.display='block';
+  document.getElementById('scan-results').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function toggleRisk(i){
+  const b=document.getElementById('rb-'+i);
+  b.classList.toggle('open');
+}
+
+function formatBytes(b){if(b<1024)return b+'B';return (b/1024).toFixed(1)+'KB'}
+
+// ── COPY FINDINGS ──
+function copyFindings(){
+  if(!lastScanData)return;
+  const d=lastScanData;
+  const txt=`APIGUARD — API SECURITY SCAN FINDINGS
+======================================
+URL: ${d.url}
+Method: ${d.method}
+Status: ${d.status} ${d.statusText}
+Latency: ${d.latency}ms | Size: ${d.size}B
+Overall Risk: ${d.overall}
+Timestamp: ${d.timestamp}
+
+SUMMARY:
+${d.summary}
+
+RISKS IDENTIFIED (${d.risks.length}):
+${d.risks.map((r,i)=>`
+${i+1}. [${r.severity}] ${r.title} (${r.id})
+   Description: ${r.description}
+   Evidence: ${r.evidence}
+   Impact: ${r.business_impact}
+   Fix: ${r.remediation}`).join('\n')}
+
+--- APIGuard | Future Interns Cyber Security Task 3 ---`;
+  navigator.clipboard.writeText(txt).then(()=>{
+    const b=document.getElementById('copy-btn');b.textContent='✓ Copied!';
+    setTimeout(()=>{b.textContent='📋 Copy Findings'},2000);
+  });
+}
+
+// ── ADD TO REPORT ──
+function addToReport(){
+  if(!lastScanData){alert('No scan data to add.');return}
+  reportScans.push({...lastScanData});
+  renderReport();
+  document.querySelector('[onclick="showPage(\'report\')"]').click();
+  showPage('report');
+  document.querySelectorAll('.nav-tab').forEach(t=>{if(t.textContent.includes('Risk Report'))t.classList.add('active');else t.classList.remove('active')});
+}
+
+function renderReport(){
+  if(!reportScans.length){document.getElementById('report-empty').style.display='block';document.getElementById('report-content').style.display='none';return}
+  document.getElementById('report-empty').style.display='none';
+  document.getElementById('report-content').style.display='block';
+
+  const allRisks=reportScans.flatMap(s=>s.risks.map(r=>({...r,_url:s.url})));
+  const bySev={Critical:[],High:[],Medium:[],Low:[],Info:[]};
+  allRisks.forEach(r=>{if(bySev[r.severity])bySev[r.severity].push(r)});
+
+  document.getElementById('report-body').innerHTML=`
+    <div class="report-section">
+      <h3>Executive Summary</h3>
+      <p style="font-size:13px;color:var(--muted2);line-height:1.8">
+        This API Security Risk Analysis was conducted on ${reportScans.length} API endpoint(s) as part of Future Interns Cyber Security Task 3 (2026). 
+        The assessment focused on identifying OWASP API Security Top 10 risks including authentication gaps, excessive data exposure, security misconfiguration, and missing security controls.
+        A total of <strong style="color:var(--text)">${allRisks.length} findings</strong> were identified across all tested endpoints.
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+        ${Object.entries(bySev).filter(([,v])=>v.length).map(([s,v])=>`<span class="sev ${s.toLowerCase()}">${v.length} ${s}</span>`).join('')}
+      </div>
+    </div>
+
+    <div class="report-section">
+      <h3>APIs Tested</h3>
+      <table class="report-table">
+        <thead><tr><th>#</th><th>Endpoint</th><th>Method</th><th>Status</th><th>Latency</th><th>Overall Risk</th><th>Findings</th></tr></thead>
+        <tbody>
+          ${reportScans.map((s,i)=>`<tr>
+            <td style="color:var(--muted2);font-family:var(--mono)">${i+1}</td>
+            <td style="font-family:var(--mono);font-size:12px;word-break:break-all">${s.url}</td>
+            <td><span style="font-family:var(--mono);font-size:11px">${s.method}</span></td>
+            <td style="font-family:var(--mono);color:${s.status>=200&&s.status<300?'var(--low)':'var(--high)'}">${s.status}</td>
+            <td style="font-family:var(--mono);font-size:12px">${s.latency}ms</td>
+            <td><span class="sev ${s.overall.toLowerCase()}">${s.overall}</span></td>
+            <td style="font-family:var(--mono)">${s.risks.length}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="report-section">
+      <h3>Detailed Risk Findings</h3>
+      <table class="report-table">
+        <thead><tr><th>#</th><th>Finding</th><th>OWASP ID</th><th>Severity</th><th>Evidence</th><th>Remediation</th></tr></thead>
+        <tbody>
+          ${allRisks.map((r,i)=>`<tr>
+            <td style="color:var(--muted2);font-family:var(--mono)">${i+1}</td>
+            <td><strong>${r.title}</strong><br><span style="font-size:12px;color:var(--muted2)">${r.description}</span></td>
+            <td><span style="font-family:var(--mono);font-size:11px;color:var(--accent)">${r.id}</span></td>
+            <td><span class="sev ${r.severity.toLowerCase()}">${r.severity}</span></td>
+            <td style="font-size:12px;color:var(--muted2)">${r.evidence}</td>
+            <td style="font-size:12px;color:var(--low)">${r.remediation}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="report-section">
+      <h3>Methodology</h3>
+      <div style="font-size:13px;color:var(--muted2);line-height:1.8">
+        <strong style="color:var(--text)">Scope:</strong> Read-only testing of public demo APIs. No exploitation attempted.<br>
+        <strong style="color:var(--text)">Tools:</strong> APIGuard (custom), Anthropic Claude AI, Browser DevTools<br>
+        <strong style="color:var(--text)">Framework:</strong> OWASP API Security Top 10 (2023)<br>
+        <strong style="color:var(--text)">Ethics:</strong> All testing performed on APIs explicitly designed for testing (JSONPlaceholder, ReqRes). No private or production APIs were tested.
+      </div>
+    </div>`;
+}
+
+function copyFullReport(){
+  const analyst=document.getElementById('r-analyst').value||'[Analyst Name]';
+  const org=document.getElementById('r-org').value||'Future Interns';
+  const scope=document.getElementById('r-scope').value||'Public demo APIs';
+  const date=document.getElementById('r-date').value||new Date().toLocaleDateString();
+  const allRisks=reportScans.flatMap(s=>s.risks.map(r=>({...r,_url:s.url})));
+  const txt=`API SECURITY RISK ANALYSIS REPORT
+===================================
+Analyst: ${analyst}
+Organization: ${org}
+Scope: ${scope}
+Date: ${date}
+
+EXECUTIVE SUMMARY:
+${reportScans.length} API endpoint(s) tested. ${allRisks.length} total findings.
+
+APIs TESTED:
+${reportScans.map((s,i)=>`${i+1}. ${s.method} ${s.url} — ${s.overall} Risk (${s.risks.length} findings)`).join('\n')}
+
+DETAILED FINDINGS:
+${allRisks.map((r,i)=>`
+${i+1}. [${r.severity}] ${r.title}
+   OWASP: ${r.id} — ${r.owasp_name}
+   Description: ${r.description}
+   Evidence: ${r.evidence}
+   Business Impact: ${r.business_impact}
+   Remediation: ${r.remediation}`).join('\n')}
+
+METHODOLOGY:
+- Scope: Read-only testing of public/demo APIs
+- Framework: OWASP API Security Top 10 (2023)
+- Tools: APIGuard, Claude AI, Browser DevTools
+- Ethics: No exploitation attempted. Testing limited to APIs designed for testing.
+
+--- APIGuard | Future Interns Cyber Security Task 3 (2026) ---`;
+  navigator.clipboard.writeText(txt).then(()=>alert('Full report copied to clipboard!'));
+}
+
+function printReport(){window.print()}
+
+// ── OWASP TOP 10 ──
+const owaspItems=[
+  {id:'API1',name:'Broken Object Level Authorization',desc:'APIs expose endpoints that handle object identifiers, creating a wide attack surface. Authorization checks should be performed in every function that accesses a data source using input from the user.',check:'✓ Test accessing other users\' data by changing IDs in requests'},
+  {id:'API2',name:'Broken Authentication',desc:'Authentication mechanisms are often implemented incorrectly, allowing attackers to compromise authentication tokens or to exploit implementation flaws to assume other users\' identities temporarily or permanently.',check:'✓ Check if endpoints work without auth tokens · Test weak tokens · Verify token expiry'},
+  {id:'API3',name:'Excessive Data Exposure',desc:'APIs return more data than the client actually needs, relying on the client to filter. Attackers can always call the API directly and get all the data including sensitive fields.',check:'✓ Inspect all response fields · Look for passwords, SSNs, tokens, PII not needed by the UI'},
+  {id:'API4',name:'Lack of Resources & Rate Limiting',desc:'APIs often do not impose any restrictions on the size or number of resources that can be requested. This can lead to DoS attacks, brute force credential stuffing, and API abuse.',check:'✓ Send rapid repeated requests · Check for rate limit headers (X-RateLimit-*) in responses'},
+  {id:'API5',name:'Broken Function Level Authorization',desc:'Complex access control policies with different hierarchies, groups, and roles, and an unclear separation between admin and regular functions, tend to lead to authorization flaws.',check:'✓ Test admin-only endpoints as regular user · Try HTTP method switching (GET vs DELETE)'},
+  {id:'API6',name:'Mass Assignment',desc:'Binding client-provided data (e.g. JSON) to data models without proper filtering based on an allowlist allows attackers to modify object properties they are not supposed to.',check:'✓ Send extra fields in POST/PUT body · See if unexpected fields are accepted and stored'},
+  {id:'API7',name:'Security Misconfiguration',desc:'Security misconfiguration is commonly a result of insecure default configurations, incomplete or ad-hoc configurations, open cloud storage, misconfigured HTTP headers, or verbose error messages.',check:'✓ Inspect all security headers · Check CORS policy · Look for verbose error messages'},
+  {id:'API8',name:'Injection',desc:'Injection flaws, such as SQL, NoSQL, Command Injection, occur when untrusted data is sent to an interpreter as part of a command or query. The attacker\'s hostile data can trick the interpreter.',check:'✓ Test query parameters with special chars · Send malformed JSON · Check error responses'},
+  {id:'API9',name:'Improper Assets Management',desc:'APIs tend to expose more endpoints than traditional web applications, making proper and updated documentation highly important. Proper hosts and deployed API versions inventory also plays an important role.',check:'✓ Check for /v1 /v2 /beta /old endpoints · Look for deprecated API versions still active'},
+  {id:'API10',name:'Insufficient Logging & Monitoring',desc:'Insufficient logging and monitoring, coupled with missing or ineffective integration with incident response, allows attackers to further attack systems, maintain persistence, pivot to more systems.',check:'✓ Check if failed auth attempts are logged · Verify audit trail exists for sensitive operations'},
+];
+document.getElementById('owasp-list').innerHTML=owaspItems.map(o=>`
+  <div class="owasp-item">
+    <div class="owasp-num">${o.id}</div>
+    <div class="owasp-title">${o.name}</div>
+    <div class="owasp-desc">${o.desc}</div>
+    <div class="owasp-check">${o.check}</div>
+  </div>`).join('');
+
+// ── CHECKLIST ──
+const clSections=[
+  {title:'🔐 Authentication & Authorization',items:['Does the endpoint require authentication?','Are authentication tokens properly validated?','Do tokens expire after a reasonable time?','Is there protection against brute force login attempts?','Can users access other users\' data by changing IDs?','Are admin endpoints protected from regular users?','Is there role-based access control (RBAC)?','Are JWT tokens properly signed and validated?']},
+  {title:'📊 Data Exposure',items:['Does the response only return data the client needs?','Are passwords or hashed passwords in the response?','Are API keys or secrets exposed in the response?','Is PII (email, phone, address) exposure justified?','Are internal database IDs exposed unnecessarily?','Does the API expose data from related objects?','Are error messages too verbose (stack traces)?','Is response data filtered server-side, not client-side?']},
+  {title:'🛡 Security Headers & HTTPS',items:['Is the API served over HTTPS?','Is Strict-Transport-Security (HSTS) header present?','Is X-Content-Type-Options: nosniff set?','Is Content-Security-Policy configured?','Is CORS configured with explicit origins (not wildcard)?','Are Server and X-Powered-By headers removed?','Is Cache-Control set for sensitive endpoints?','Is Referrer-Policy configured?']},
+  {title:'⚡ Rate Limiting & Input Validation',items:['Are rate limit headers present (X-RateLimit-*)?','Is there a 429 response for too many requests?','Are request body sizes limited?','Is input properly validated and sanitized?','Does the API reject unexpected/extra fields?','Is SQL/NoSQL injection protected against?','Are file upload types and sizes restricted?','Is there protection against parameter pollution?']},
+  {title:'📋 API Design & Versioning',items:['Is API documentation up to date?','Are old API versions (v1, v2, beta) properly deprecated?','Are deprecated endpoints disabled or redirected?','Is there a consistent error response format?','Do 404 errors not reveal endpoint existence?','Are internal implementation details hidden in errors?','Is versioning consistent across endpoints?','Are unused endpoints removed from production?']},
+];
+let clTotal=0,clDone=0;
+document.getElementById('checklist-sections').innerHTML=clSections.map((s,si)=>`
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-head"><div class="card-title">${s.title}</div></div>
+    <div class="card-body">
+      <div class="check-grid">
+        ${s.items.map((item,ii)=>{clTotal++;return`<label class="check-item"><input type="checkbox" onchange="updateProgress()" id="cl-${si}-${ii}"><span>${item}</span></label>`}).join('')}
+      </div>
+    </div>
+  </div>`).join('');
+document.getElementById('cl-progress').textContent=`0 / ${clTotal}`;
+
+function updateProgress(){
+  clDone=document.querySelectorAll('.check-item input:checked').length;
+  document.getElementById('cl-progress').textContent=`${clDone} / ${clTotal}`;
+  document.getElementById('cl-bar').style.width=((clDone/clTotal)*100)+'%';
+}
+
+// Seed the report date
+document.getElementById('r-date').value=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+</script>
+</body>
+</html>
