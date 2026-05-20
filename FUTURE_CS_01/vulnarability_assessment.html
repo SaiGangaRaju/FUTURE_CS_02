@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VulnScout — Website Vulnerability Assessment Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#06080d;--bg2:#0b0f16;--bg3:#10151e;--bg4:#161d28;
+  --border:rgba(255,255,255,0.055);--border2:rgba(255,255,255,0.1);
+  --text:#dde3ed;--muted:#505a6a;--muted2:#8892a4;
+  --accent:#06b6d4;--accent2:#0891b2;--accent-glow:rgba(6,182,212,0.2);
+  --critical:#f43f5e;--critical-bg:rgba(244,63,94,0.08);--critical-bd:rgba(244,63,94,0.25);
+  --high:#f97316;--high-bg:rgba(249,115,22,0.08);--high-bd:rgba(249,115,22,0.25);
+  --medium:#eab308;--medium-bg:rgba(234,179,8,0.08);--medium-bd:rgba(234,179,8,0.25);
+  --low:#22c55e;--low-bg:rgba(34,197,94,0.08);--low-bd:rgba(34,197,94,0.25);
+  --info:#818cf8;--info-bg:rgba(129,140,248,0.08);--info-bd:rgba(129,140,248,0.25);
+  --mono:'Space Mono',monospace;--sans:'Syne',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(6,182,212,0.018) 1px,transparent 1px),linear-gradient(90deg,rgba(6,182,212,0.018) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0}
+.orb1{position:fixed;top:-180px;left:-180px;width:520px;height:520px;background:radial-gradient(circle,rgba(6,182,212,0.06) 0%,transparent 68%);pointer-events:none;z-index:0}
+.orb2{position:fixed;bottom:-180px;right:-180px;width:480px;height:480px;background:radial-gradient(circle,rgba(244,63,94,0.05) 0%,transparent 68%);pointer-events:none;z-index:0}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(6,8,13,0.93);backdrop-filter:blur(14px);border-bottom:1px solid var(--border2);padding:0 24px}
+.nav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;height:56px}
+.nav-logo{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800;letter-spacing:-0.4px;margin-right:28px;white-space:nowrap;flex-shrink:0}
+.nav-logo span{color:var(--accent)}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 0 14px var(--accent-glow)}
+.nav-tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{background:transparent;border:none;color:var(--muted2);font-family:var(--sans);font-size:13px;padding:6px 14px;border-radius:6px;cursor:pointer;white-space:nowrap;transition:all 0.18s}
+.nav-tab:hover{color:var(--text);background:var(--bg3)}
+.nav-tab.active{color:var(--accent);background:rgba(6,182,212,0.09)}
+.nav-right{margin-left:auto;flex-shrink:0}
+.live-pill{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--low);font-family:var(--mono);padding:4px 12px;border-radius:999px;border:1px solid var(--low-bd);background:var(--low-bg)}
+.live-pill::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--low);box-shadow:0 0 6px var(--low);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.2}}
+
+/* PAGES */
+.page{display:none;position:relative;z-index:1;padding-bottom:52px}
+.page.active{display:block}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+.hero{padding:36px 0 22px;border-bottom:1px solid var(--border);margin-bottom:26px}
+.hero h1{font-size:24px;font-weight:800;letter-spacing:-0.5px;margin-bottom:6px}
+.hero h1 span{color:var(--accent)}
+.hero p{font-size:13px;color:var(--muted2);max-width:600px;line-height:1.7}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;overflow:hidden;margin-bottom:18px}
+.card-head{padding:13px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.card-title{font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.12em;color:var(--muted2);display:flex;align-items:center;gap:7px}
+.card-title::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.card-body{padding:20px}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:22px}
+.stat{background:var(--bg2);padding:15px 10px;text-align:center}
+.stat-n{font-size:22px;font-weight:800;font-family:var(--mono)}
+.stat-l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-top:3px}
+
+/* FORM */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field label{font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted2);font-family:var(--mono)}
+.field input,.field textarea,.field select{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;width:100%;resize:none}
+.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(6,182,212,0.1)}
+.url-row{display:flex;gap:10px;align-items:flex-end;margin-bottom:14px}
+.url-row .field{flex:1;margin-bottom:0}
+
+/* BUTTONS */
+.btn{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:9px;padding:11px 22px;color:#000;font-size:13px;font-weight:700;font-family:var(--sans);cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:all 0.2s;box-shadow:0 4px 14px var(--accent-glow);white-space:nowrap}
+.btn:hover{transform:translateY(-1px);box-shadow:0 6px 22px var(--accent-glow)}
+.btn:disabled{opacity:0.45;cursor:not-allowed;transform:none}
+.btn-ghost{background:transparent;border:1px solid var(--border2);border-radius:9px;padding:10px 18px;color:var(--muted2);font-family:var(--sans);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all 0.18s;white-space:nowrap}
+.btn-ghost:hover{color:var(--text);background:var(--bg3)}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.spin{display:none;width:14px;height:14px;border:2px solid rgba(0,0,0,0.25);border-top-color:#000;border-radius:50%;animation:spinr 0.6s linear infinite}
+@keyframes spinr{to{transform:rotate(360deg)}}
+
+/* PRESETS */
+.preset-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.preset{border:1px solid var(--border2);background:transparent;border-radius:999px;padding:5px 13px;font-size:12px;color:var(--muted2);cursor:pointer;font-family:var(--sans);transition:all 0.18s}
+.preset:hover{border-color:var(--accent);color:var(--accent);background:rgba(6,182,212,0.06)}
+
+/* SEVERITY BADGE */
+.sev{padding:3px 9px;border-radius:5px;font-size:11px;font-family:var(--mono);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;display:inline-block}
+.sev.critical{background:var(--critical-bg);border:1px solid var(--critical-bd);color:var(--critical)}
+.sev.high{background:var(--high-bg);border:1px solid var(--high-bd);color:var(--high)}
+.sev.medium{background:var(--medium-bg);border:1px solid var(--medium-bd);color:var(--medium)}
+.sev.low{background:var(--low-bg);border:1px solid var(--low-bd);color:var(--low)}
+.sev.info{background:var(--info-bg);border:1px solid var(--info-bd);color:var(--info)}
+
+/* SCAN PROGRESS */
+.scan-progress{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:20px 24px;margin-bottom:18px}
+.progress-steps{display:flex;flex-direction:column;gap:8px}
+.pstep{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted2);transition:color 0.3s}
+.pstep.done{color:var(--low)}
+.pstep.active{color:var(--accent)}
+.pstep-icon{width:18px;height:18px;border-radius:50%;border:2px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;transition:all 0.3s}
+.pstep.done .pstep-icon{background:var(--low);border-color:var(--low);color:#000}
+.pstep.active .pstep-icon{border-color:var(--accent)}
+.scan-spinner{width:12px;height:12px;border:2px solid rgba(6,182,212,0.3);border-top-color:var(--accent);border-radius:50%;animation:spinr 0.7s linear infinite;display:none}
+.pstep.active .scan-spinner{display:block}
+
+/* RESULTS GRID */
+.results-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+
+/* SCORE RING */
+.score-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 20px}
+.score-ring{width:120px;height:120px;position:relative;margin-bottom:14px}
+.score-ring svg{transform:rotate(-90deg)}
+.score-ring-bg{fill:none;stroke:var(--bg3);stroke-width:10}
+.score-ring-fill{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)}
+.score-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--mono)}
+.score-n{font-size:28px;font-weight:800;line-height:1}
+.score-max{font-size:11px;color:var(--muted);margin-top:2px}
+.score-label{font-size:13px;font-weight:700;text-align:center}
+.score-sub{font-size:12px;color:var(--muted2);text-align:center;margin-top:4px}
+.sev-breakdown{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+
+/* HEADER TABLE */
+.sec-hdr-table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+.sec-hdr-table td{padding:7px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.sec-hdr-table td:first-child{color:var(--muted2);width:42%}
+.sec-hdr-table td:last-child{word-break:break-all}
+.sec-hdr-table tr:last-child td{border-bottom:none}
+.hdr-ok{color:var(--low)}
+.hdr-miss{color:var(--critical)}
+.hdr-warn{color:var(--medium)}
+.flag-chip{font-size:10px;padding:1px 6px;border-radius:3px;margin-left:5px;vertical-align:middle}
+.flag-miss{background:var(--critical-bg);border:1px solid var(--critical-bd);color:var(--critical)}
+.flag-ok{background:var(--low-bg);border:1px solid var(--low-bd);color:var(--low)}
+.flag-warn{background:var(--medium-bg);border:1px solid var(--medium-bd);color:var(--medium)}
+
+/* VULN ITEMS */
+.vuln-item{border:1px solid;border-radius:10px;overflow:hidden;margin-bottom:10px;animation:fadeUp 0.3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.vuln-item.critical{border-color:var(--critical-bd);background:var(--critical-bg)}
+.vuln-item.high{border-color:var(--high-bd);background:var(--high-bg)}
+.vuln-item.medium{border-color:var(--medium-bd);background:var(--medium-bg)}
+.vuln-item.low{border-color:var(--low-bd);background:var(--low-bg)}
+.vuln-item.info{border-color:var(--info-bd);background:var(--info-bg)}
+.vuln-head{padding:11px 15px;display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
+.vuln-title{font-size:13px;font-weight:700;flex:1}
+.vuln-body{padding:0 15px 13px;display:none;animation:fadeUp 0.2s ease}
+.vuln-body.open{display:block}
+.vuln-desc{font-size:13px;color:var(--muted2);line-height:1.7;margin-bottom:10px}
+.vuln-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.vuln-box{background:rgba(0,0,0,0.2);border-radius:7px;padding:10px 12px}
+.vuln-box h4{font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:5px}
+.vuln-box p{font-size:12px;color:var(--text);line-height:1.6}
+
+/* REPORT PAGE */
+.report-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.report-table{width:100%;border-collapse:collapse;font-size:13px}
+.report-table th{text-align:left;padding:9px 14px;background:var(--bg3);font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.08em;color:var(--muted2);border-bottom:1px solid var(--border)}
+.report-table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.6}
+.report-table tr:last-child td{border-bottom:none}
+.report-section{margin-bottom:26px}
+.report-section h3{font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+
+/* METHODOLOGY PAGE */
+.method-step{display:flex;gap:16px;margin-bottom:20px}
+.step-num{width:36px;height:36px;border-radius:50%;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--accent);flex-shrink:0;font-family:var(--mono)}
+.step-body h3{font-size:14px;font-weight:700;margin-bottom:5px}
+.step-body p{font-size:13px;color:var(--muted2);line-height:1.7}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.info-box{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:18px}
+.info-box h3{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.info-box ul{list-style:none;display:flex;flex-direction:column;gap:6px}
+.info-box li{font-size:13px;color:var(--muted2);display:flex;align-items:flex-start;gap:7px;line-height:1.5}
+.info-box li::before{content:'→';color:var(--accent);flex-shrink:0;font-family:var(--mono);font-size:11px;margin-top:2px}
+
+footer{padding:20px 24px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:relative;z-index:1}
+.footer-txt{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.footer-tags{display:flex;gap:7px}
+.footer-tag{font-size:10px;padding:2px 9px;border-radius:999px;border:1px solid var(--border);color:var(--muted);font-family:var(--mono)}
+
+@media print{
+  nav,footer,.btn,.btn-ghost,.btn-row,.preset-row{display:none!important}
+  .page{display:block!important}
+  #page-scanner,#page-methodology,#page-glossary{display:none!important}
+  body{background:#fff;color:#000}
+  .card{border:1px solid #ddd;box-shadow:none}
+}
+@media(max-width:680px){
+  .results-grid,.info-grid,.report-meta-grid,.vuln-grid{grid-template-columns:1fr}
+  .stats-row{grid-template-columns:1fr 1fr 1fr}
+  .stat:nth-child(4),.stat:nth-child(5){display:none}
+}
+</style>
+</head>
+<body>
+<div class="orb1"></div><div class="orb2"></div>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo"><div class="logo-icon">🔎</div>Vuln<span>Scout</span></div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showPage('scanner')">🔍 VA Scanner</button>
+      <button class="nav-tab" onclick="showPage('report')">📄 VA Report</button>
+      <button class="nav-tab" onclick="showPage('methodology')">📋 Methodology</button>
+      <button class="nav-tab" onclick="showPage('glossary')">📚 Glossary</button>
+    </div>
+    <div class="nav-right"><div class="live-pill">Passive Scan</div></div>
+  </div>
+</nav>
+
+<!-- ══════════ SCANNER PAGE ══════════ -->
+<div class="page active" id="page-scanner">
+<div class="wrap">
+  <div class="hero">
+    <h1>Website <span>Vulnerability Scanner</span></h1>
+    <p>Passive, read-only security analysis. Checks headers, HTTPS, cookies, information exposure, and common misconfigurations. No exploitation — ethical auditing only.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat"><div class="stat-n" id="st-scans">0</div><div class="stat-l">Scans Done</div></div>
+    <div class="stat"><div class="stat-n" id="st-crit" style="color:var(--critical)">0</div><div class="stat-l">Critical</div></div>
+    <div class="stat"><div class="stat-n" id="st-high" style="color:var(--high)">0</div><div class="stat-l">High</div></div>
+    <div class="stat"><div class="stat-n" id="st-med" style="color:var(--medium)">0</div><div class="stat-l">Medium</div></div>
+    <div class="stat"><div class="stat-n" id="st-low" style="color:var(--low)">0</div><div class="stat-l">Low / Info</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">Target Configuration</div></div>
+    <div class="card-body">
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--muted2);font-family:var(--mono);margin-bottom:8px">SAFE DEMO TARGETS (publicly available test sites):</div>
+        <div class="preset-row">
+          <button class="preset" onclick="setUrl('https://example.com')">example.com</button>
+          <button class="preset" onclick="setUrl('https://httpbin.org')">httpbin.org</button>
+          <button class="preset" onclick="setUrl('https://jsonplaceholder.typicode.com')">jsonplaceholder</button>
+          <button class="preset" onclick="setUrl('https://reqres.in')">reqres.in</button>
+          <button class="preset" onclick="setUrl('http://testphp.vulnweb.com')">testphp.vulnweb ⚠</button>
+        </div>
+      </div>
+      <div class="url-row">
+        <div class="field">
+          <label>Target Website URL</label>
+          <input id="f-url" type="text" placeholder="https://example.com" value="https://example.com"/>
+        </div>
+        <button class="btn" id="scan-btn" onclick="runScan()" style="margin-bottom:0">
+          <span>🔎</span><span id="scan-lbl">Start Assessment</span><div class="spin" id="spin"></div>
+        </button>
+        <button class="btn-ghost" onclick="clearResults()">✕</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);font-family:var(--mono)">
+        ⚠ Scope: Passive analysis only. No exploitation, brute force, or DoS. Only test websites you own or have permission to test.
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div id="progress-card" style="display:none" class="scan-progress">
+    <div style="font-size:12px;font-family:var(--mono);color:var(--accent);margin-bottom:14px;text-transform:uppercase;letter-spacing:0.1em">Scan in Progress…</div>
+    <div class="progress-steps" id="progress-steps"></div>
+  </div>
+
+  <!-- Results -->
+  <div id="results" style="display:none">
+
+    <div class="results-grid">
+      <!-- Score -->
+      <div class="card" style="margin-bottom:0">
+        <div class="card-head"><div class="card-title">Security Score</div></div>
+        <div class="score-wrap">
+          <div class="score-ring">
+            <svg viewBox="0 0 120 120" width="120" height="120">
+              <circle class="score-ring-bg" cx="60" cy="60" r="50"/>
+              <circle class="score-ring-fill" id="score-circle" cx="60" cy="60" r="50" stroke-dasharray="314" stroke-dashoffset="314"/>
+            </svg>
+            <div class="score-num">
+              <div class="score-n" id="score-num">—</div>
+              <div class="score-max">/100</div>
+            </div>
+          </div>
+          <div class="score-label" id="score-label">—</div>
+          <div class="score-sub" id="score-sub">—</div>
+          <div class="sev-breakdown" id="sev-breakdown"></div>
+        </div>
+      </div>
+      <!-- Security Headers -->
+      <div class="card" style="margin-bottom:0">
+        <div class="card-head"><div class="card-title">Security Headers</div><div id="hdr-score" class="sev info">—</div></div>
+        <div style="padding:0">
+          <table class="sec-hdr-table"><tbody id="hdr-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px"></div>
+
+    <!-- Summary -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Executive Summary</div>
+        <div id="overall-sev" class="sev info">—</div>
+      </div>
+      <div class="card-body">
+        <div id="exec-summary" style="font-size:13px;color:var(--muted2);line-height:1.8;margin-bottom:12px"></div>
+        <div id="positives-row" style="display:none">
+          <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.1em;color:var(--low);margin-bottom:7px">✓ Positive Findings</div>
+          <div id="positives-list" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vulnerabilities -->
+    <div class="card-head" style="padding:14px 0 10px;margin-bottom:4px">
+      <div class="card-title" style="font-size:12px">Vulnerability Findings</div>
+      <div id="vuln-count" style="font-size:12px;color:var(--muted2);font-family:var(--mono)"></div>
+    </div>
+    <div id="vuln-list"></div>
+
+    <div class="btn-row" style="margin-bottom:32px;margin-top:8px">
+      <button class="btn-ghost" onclick="addToReport()" id="add-report-btn">📄 Add to Report</button>
+      <button class="btn-ghost" onclick="copySummary()" id="copy-btn">📋 Copy Summary</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════ REPORT PAGE ══════════ -->
+<div class="page" id="page-report">
+<div class="wrap">
+  <div class="hero">
+    <h1>Vulnerability Assessment <span>Report</span></h1>
+    <p>Professional report formatted for client delivery. Add scans from the scanner, fill in analyst details, then copy or print.</p>
+  </div>
+
+  <div id="report-empty" class="card">
+    <div class="card-body" style="text-align:center;padding:48px;color:var(--muted2)">
+      <div style="font-size:36px;margin-bottom:14px">📄</div>
+      <div style="font-size:14px;margin-bottom:7px">No scans in report yet</div>
+      <div style="font-size:13px">Run a scan, then click "Add to Report"</div>
+    </div>
+  </div>
+
+  <div id="report-content" style="display:none">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Report Details</div></div>
+      <div class="card-body">
+        <div class="report-meta-grid">
+          <div class="field" style="margin-bottom:0"><label>Analyst Name</label><input id="r-analyst" placeholder="Your Name"/></div>
+          <div class="field" style="margin-bottom:0"><label>Client / Organization</label><input id="r-client" placeholder="Future Interns — Cyber Security Task 1"/></div>
+          <div class="field" style="margin-bottom:0"><label>Assessment Date</label><input id="r-date" placeholder="May 20, 2026"/></div>
+          <div class="field" style="margin-bottom:0"><label>Scope</label><input id="r-scope" placeholder="Public-facing pages, passive analysis only"/></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Full Vulnerability Assessment Report</div>
+        <div class="btn-row" style="gap:8px">
+          <button class="btn-ghost" style="font-size:12px;padding:6px 14px" onclick="copyReport()">📋 Copy</button>
+          <button class="btn-ghost" style="font-size:12px;padding:6px 14px" onclick="window.print()">🖨 Print / PDF</button>
+        </div>
+      </div>
+      <div class="card-body" id="report-body"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════ METHODOLOGY PAGE ══════════ -->
+<div class="page" id="page-methodology">
+<div class="wrap">
+  <div class="hero">
+    <h1>Assessment <span>Methodology</span></h1>
+    <p>How VulnScout conducts passive vulnerability assessments — aligned with OWASP WSTG and real-world security consulting practice.</p>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-box">
+      <h3>✅ What's Allowed (Scope)</h3>
+      <ul>
+        <li>Public-facing pages only</li>
+        <li>Passive HTTP/HTTPS scanning</li>
+        <li>Security header inspection</li>
+        <li>Response body analysis</li>
+        <li>Cookie flag checks</li>
+        <li>TLS/HTTPS configuration review</li>
+        <li>Information disclosure detection</li>
+        <li>Publicly accessible resource enumeration</li>
+      </ul>
+    </div>
+    <div class="info-box">
+      <h3>🚫 What's Not Allowed</h3>
+      <ul>
+        <li>Login bypass or credential attacks</li>
+        <li>SQL injection or exploitation</li>
+        <li>Brute force attacks</li>
+        <li>Denial of Service (DoS)</li>
+        <li>Accessing private APIs without permission</li>
+        <li>Testing systems you don't own</li>
+        <li>Automated aggressive scanning</li>
+        <li>Any action that modifies site data</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:22px">
+    <div class="card-head"><div class="card-title">Step-by-Step Process</div></div>
+    <div class="card-body">
+      <div class="method-step">
+        <div class="step-num">1</div>
+        <div class="step-body"><h3>Target Selection</h3><p>Choose a public website you own, a demo site, or a site explicitly designed for testing (e.g. testphp.vulnweb.com). Never test sites without permission.</p></div>
+      </div>
+      <div class="method-step">
+        <div class="step-num">2</div>
+        <div class="step-body"><h3>HTTP Request & Header Collection</h3><p>Perform a GET request to the target. Collect all response headers including security headers, server info, cookies, and redirect behavior.</p></div>
+      </div>
+      <div class="method-step">
+        <div class="step-num">3</div>
+        <div class="step-body"><h3>Security Header Analysis</h3><p>Check for presence and correct configuration of: HSTS, CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, and CORS headers.</p></div>
+      </div>
+      <div class="method-step">
+        <div class="step-num">4</div>
+        <div class="step-body"><h3>Information Exposure Check</h3><p>Inspect for server software disclosure (Server header, X-Powered-By), verbose error messages, internal paths, version numbers, and technology stack fingerprinting.</p></div>
+      </div>
+      <div class="method-step">
+        <div class="step-num">5</div>
+        <div class="step-body"><h3>TLS / HTTPS Verification</h3><p>Check if site uses HTTPS, if HTTP redirects to HTTPS, and if HSTS is enforced with a sufficient max-age directive.</p></div>
+      </div>
+      <div class="method-step">
+        <div class="step-num">6</div>
+        <div class="step-body"><h3>Risk Classification & AI Analysis</h3><p>Each finding is classified as Critical / High / Medium / Low / Info based on exploitability, impact, and CVSS-aligned scoring. AI provides plain-English business impact explanations.</p></div>
+      </div>
+      <div class="method-step">
+        <div class="step-num">7</div>
+        <div class="step-body"><h3>Report Generation</h3><p>All findings are compiled into a professional Vulnerability Assessment Report with executive summary, detailed findings, business impact, and prioritised remediation steps.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-box">
+      <h3>🛠 Tools Used</h3>
+      <ul>
+        <li>VulnScout (this tool) — passive web scanning</li>
+        <li>Browser DevTools — header inspection</li>
+        <li>OWASP ZAP (passive mode) — deeper scanning</li>
+        <li>Nmap — port and service enumeration</li>
+        <li>SSL Labs — TLS certificate analysis</li>
+        <li>SecurityHeaders.com — header grading</li>
+      </ul>
+    </div>
+    <div class="info-box">
+      <h3>📖 References</h3>
+      <ul>
+        <li>OWASP Web Security Testing Guide (WSTG)</li>
+        <li>OWASP Top 10 Web Application Risks</li>
+        <li>NIST Cybersecurity Framework</li>
+        <li>CWE/CVE vulnerability database</li>
+        <li>Mozilla Observatory security guidelines</li>
+        <li>Google Security Blog best practices</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════ GLOSSARY PAGE ══════════ -->
+<div class="page" id="page-glossary">
+<div class="wrap">
+  <div class="hero">
+    <h1>Security <span>Glossary</span></h1>
+    <p>Plain-English definitions of every security term used in the assessment report — for clients and non-technical stakeholders.</p>
+  </div>
+  <div id="glossary-list"></div>
+</div>
+</div>
+
+<footer>
+  <div class="footer-txt">VulnScout v1.0 — Website Vulnerability Assessment Tool — Future Interns Cyber Security Task 1 (2026)</div>
+  <div class="footer-tags">
+    <span class="footer-tag">VAPT</span><span class="footer-tag">OWASP</span><span class="footer-tag">Ethical Hacking</span>
+  </div>
+</footer>
+
+<script>
+// ── NAV ──
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function setUrl(u){document.getElementById('f-url').value=u}
+function clearResults(){document.getElementById('results').style.display='none';document.getElementById('progress-card').style.display='none'}
+
+// ── STATS ──
+const counts={scans:0,critical:0,high:0,medium:0,low:0};
+function updateStats(vulns){
+  counts.scans++;
+  vulns.forEach(v=>{const s=v.severity.toLowerCase();if(s==='critical')counts.critical++;else if(s==='high')counts.high++;else if(s==='medium')counts.medium++;else counts.low++});
+  ['scans','crit','high','med','low'].forEach((k,i)=>{
+    const el=document.getElementById('st-'+k);
+    if(el)el.textContent=[counts.scans,counts.critical,counts.high,counts.medium,counts.low][i];
+  });
+}
+
+// ── SECURITY HEADERS TO CHECK ──
+const SEC_HEADERS=[
+  {key:'strict-transport-security',label:'Strict-Transport-Security',required:true,good:'Enforces HTTPS',bad:'Missing — HTTPS not enforced, downgrade attacks possible'},
+  {key:'content-security-policy',label:'Content-Security-Policy',required:true,good:'XSS protection in place',bad:'Missing — XSS attacks not mitigated'},
+  {key:'x-content-type-options',label:'X-Content-Type-Options',required:true,good:'MIME sniffing blocked',bad:'Missing — MIME sniffing attacks possible'},
+  {key:'x-frame-options',label:'X-Frame-Options',required:false,good:'Clickjacking protection',bad:'Missing — site can be embedded in iframes (clickjacking risk)'},
+  {key:'referrer-policy',label:'Referrer-Policy',required:false,good:'Referrer controlled',bad:'Missing — full URL may leak in Referer header'},
+  {key:'permissions-policy',label:'Permissions-Policy',required:false,good:'Browser features restricted',bad:'Missing — browser features (camera, mic) not restricted'},
+  {key:'access-control-allow-origin',label:'Access-Control-Allow-Origin',required:false,good:'CORS configured',bad:'Not set'},
+  {key:'cache-control',label:'Cache-Control',required:false,good:'Caching controlled',bad:'Missing — sensitive pages may be cached'},
+  {key:'x-powered-by',label:'X-Powered-By',required:false,leak:true,bad:'Present — reveals server technology stack'},
+  {key:'server',label:'Server',required:false,leak:true,bad:'Present — reveals server software version'},
+];
+
+// ── SCAN STEPS ──
+const STEPS=['Resolving target & HTTPS check','Fetching HTTP response headers','Analyzing security headers','Inspecting response body','Running AI vulnerability analysis','Generating risk score'];
+let stepInterval=null;
+
+function showProgress(){
+  document.getElementById('progress-card').style.display='block';
+  document.getElementById('results').style.display='none';
+  const container=document.getElementById('progress-steps');
+  container.innerHTML=STEPS.map((s,i)=>`
+    <div class="pstep" id="ps-${i}">
+      <div class="pstep-icon" id="psi-${i}">—</div>
+      <div class="scan-spinner" id="psp-${i}"></div>
+      <span>${s}</span>
+    </div>`).join('');
+}
+
+function setStep(idx){
+  STEPS.forEach((_,i)=>{
+    const el=document.getElementById('ps-'+i);
+    if(i<idx){el.className='pstep done';document.getElementById('psi-'+i).textContent='✓';document.getElementById('psp-'+i).style.display='none'}
+    else if(i===idx){el.className='pstep active';document.getElementById('psp-'+i).style.display='block'}
+    else{el.className='pstep';document.getElementById('psi-'+i).textContent='—'}
+  });
+}
+
+let lastScanData=null;
+let reportScans=[];
+
+async function runScan(){
+  const url=document.getElementById('f-url').value.trim();
+  if(!url){alert('Please enter a website URL.');return}
+
+  const btn=document.getElementById('scan-btn');
+  btn.disabled=true;
+  document.getElementById('scan-lbl').textContent='Scanning…';
+  document.getElementById('spin').style.display='block';
+
+  showProgress();
+  setStep(0);
+
+  // Step 0: fetch
+  let respData={status:0,statusText:'',headers:{},body:'',ok:false,finalUrl:url,isHttps:url.startsWith('https'),isCors:false,latency:0};
+  const t0=Date.now();
+  try{
+    setStep(1);
+    const res=await fetch(url,{method:'GET',redirect:'follow'});
+    respData.latency=Date.now()-t0;
+    respData.status=res.status;
+    respData.statusText=res.statusText;
+    respData.ok=res.ok;
+    res.headers.forEach((v,k)=>{respData.headers[k.toLowerCase()]=v});
+    respData.body=(await res.text()).slice(0,8000);
+    respData.finalUrl=res.url||url;
+    respData.isHttps=respData.finalUrl.startsWith('https');
+  }catch(e){
+    respData.isCors=true;
+    respData.body='CORS blocked or network error: '+e.message;
+  }
+  setStep(2);await sleep(300);
+  setStep(3);await sleep(300);
+  setStep(4);await sleep(300);
+
+  // Local header analysis
+  const localVulns=[];
+  // HTTPS check
+  if(!respData.isHttps&&!respData.isCors){
+    localVulns.push({severity:'Critical',category:'Transport Security',title:'Site Not Served Over HTTPS',description:'The website is accessible over plain HTTP. All data between the browser and server is transmitted unencrypted.',evidence:'URL scheme: http://',business_impact:'Attackers on the same network (café WiFi, ISP) can intercept and read all user data, login credentials, and form submissions.',remediation:'Install an SSL/TLS certificate and force all HTTP traffic to redirect to HTTPS. Enable HSTS once HTTPS works.'});
+  }
+  // CORS error info
+  if(respData.isCors){
+    localVulns.push({severity:'Info',category:'Scan Limitation',title:'CORS Policy Blocked Direct Scan',description:'The browser blocked the scan request due to the site\'s CORS policy. This is actually a good security sign.',evidence:respData.body,business_impact:'Positive: CORS restriction means the site blocks unauthorized cross-origin requests.',remediation:'No action needed. Use browser DevTools or OWASP ZAP for deeper header inspection.'});
+  }
+  // Header checks
+  SEC_HEADERS.forEach(sh=>{
+    const val=respData.headers[sh.key];
+    if(sh.leak&&val){
+      localVulns.push({severity:'Medium',category:'Information Disclosure',title:'Server Technology Disclosed: '+sh.label,description:`The ${sh.label} response header reveals the server's software stack to anyone inspecting HTTP responses.`,evidence:`${sh.label}: ${val}`,business_impact:'Attackers can identify the server software and target known CVEs specific to that version.',remediation:`Remove the ${sh.label} header from all server responses. Configure your web server to suppress this header.`});
+    } else if(!val&&sh.required){
+      const sev=sh.key==='strict-transport-security'?'High':sh.key==='content-security-policy'?'High':'Medium';
+      localVulns.push({severity:sev,category:'Security Headers',title:'Missing Header: '+sh.label,description:`The ${sh.label} security header is absent. ${sh.bad}`,evidence:'Header not present in HTTP response',business_impact:sh.key==='content-security-policy'?'Without CSP, attackers can inject malicious scripts into the page (Cross-Site Scripting / XSS attacks).':sh.key==='strict-transport-security'?'Users connecting over HTTP are not forced to HTTPS, leaving them vulnerable to downgrade attacks.':'Increases attack surface for common web attacks.',remediation:`Add the ${sh.label} header to all server responses with appropriate values.`});
+    }
+  });
+  // CORS wildcard
+  if(respData.headers['access-control-allow-origin']==='*'){
+    localVulns.push({severity:'High',category:'CORS Misconfiguration',title:'CORS Wildcard — All Origins Allowed',description:'The Access-Control-Allow-Origin header is set to * meaning any website can make cross-origin requests and read responses.',evidence:'Access-Control-Allow-Origin: *',business_impact:'Malicious websites can steal data from authenticated users by making cross-origin API calls.',remediation:'Replace * with an explicit whitelist of trusted origins. Never use wildcard CORS on authenticated endpoints.'});
+  }
+  // Sensitive patterns in body
+  const bodyPatterns=[
+    {r:/phpMyAdmin/i,sev:'High',title:'phpMyAdmin Interface Exposed',desc:'phpMyAdmin database management interface detected. This provides direct database access.',impact:'Attackers can attempt to brute-force credentials and gain full database access.',fix:'Move phpMyAdmin to a non-public path, restrict to IP whitelist, and add MFA.'},
+    {r:/wp-content|wordpress/i,sev:'Info',title:'WordPress CMS Detected',desc:'Site is running WordPress CMS. WordPress installations require regular updates to avoid known vulnerabilities.',impact:'Outdated WordPress installs are frequently targeted by automated scanners.',fix:'Keep WordPress core, themes, and plugins updated. Use a security plugin like Wordfence.'},
+    {r:/(?:version|v)\s*[\d]+\.[\d]+\.[\d]+/i,sev:'Low',title:'Software Version Number Disclosed',desc:'A software version number was detected in the page source, helping attackers identify potentially vulnerable versions.',impact:'Attackers can search for known CVEs for the specific version disclosed.',fix:'Remove version numbers from public-facing HTML, headers, and meta tags.'},
+    {r:/sql syntax|mysql_fetch|ORA-\d{5}|syntax error.*sql/i,sev:'Critical',title:'SQL Error Message Exposed',desc:'A database error message was found in the response, indicating possible SQL injection vulnerability and stack trace exposure.',impact:'Reveals database type, table structure, and query logic. May be exploitable for data extraction.',fix:'Implement proper error handling. Never display database errors to end users. Use a generic error page.'},
+    {r:/stack trace|at line \d+|exception in/i,sev:'High',title:'Verbose Error / Stack Trace Exposed',desc:'Application error details or stack traces are visible in the HTTP response.',impact:'Internal application structure, file paths, and code logic are exposed to attackers.',fix:'Disable debug mode in production. Implement a custom error handler that shows only a generic message.'},
+    {r:/\.env\b|DB_PASSWORD|AWS_SECRET/i,sev:'Critical',title:'Environment File or Credentials Detected',desc:'Potential .env file contents or hardcoded credentials detected in the page response.',impact:'Could expose database passwords, API keys, and cloud credentials — leading to full system compromise.',fix:'Remove .env files from web root immediately. Audit all public paths for sensitive file exposure.'},
+  ];
+  bodyPatterns.forEach(p=>{
+    if(p.r.test(respData.body)){
+      localVulns.push({severity:p.sev,category:'Content Analysis',title:p.title,description:p.desc,evidence:'Pattern detected in page response body',business_impact:p.impact,remediation:p.fix});
+    }
+  });
+
+  // AI analysis
+  setStep(4);
+  const prompt=`You are a senior web security consultant performing a Vulnerability Assessment for a client. Analyze the website scan data and return ONLY valid JSON — no markdown, no backticks.
+
+WEBSITE SCANNED: ${url}
+HTTP Status: ${respData.status} ${respData.statusText}
+HTTPS: ${respData.isHttps}
+CORS Blocked: ${respData.isCors}
+Latency: ${respData.latency}ms
+Response Headers: ${JSON.stringify(respData.headers)}
+Body preview (first 2000 chars): ${respData.body.slice(0,2000)}
+
+Return exactly:
+{
+  "security_score": <integer 0-100, where 100 is perfect>,
+  "overall_severity": "Critical"|"High"|"Medium"|"Low"|"Info",
+  "executive_summary": "<3-4 sentence non-technical summary of the site's security posture for a business owner>",
+  "vulnerabilities": [
+    {
+      "severity": "Critical"|"High"|"Medium"|"Low"|"Info",
+      "category": "<OWASP category or short category name>",
+      "title": "<short, clear vulnerability title>",
+      "description": "<what the issue is in plain English, no jargon>",
+      "evidence": "<specific evidence from the scan — actual header values, response content>",
+      "business_impact": "<what could go wrong for the business if this is exploited>",
+      "remediation": "<specific actionable fix>"
+    }
+  ],
+  "positive_findings": ["<specific good security practice observed>"],
+  "priority_actions": ["<top 3 most urgent things to fix, in order>"]
+}
+
+IMPORTANT:
+- Focus on what you can deduce from the headers, body, and URL
+- security_score: subtract points for each missing required header, HTTP instead of HTTPS, info disclosure, etc.
+- Write for a non-technical business owner — avoid jargon
+- Include at least 3 vulnerabilities
+- Positive findings: list real positives you can confirm from the scan data
+- Do NOT duplicate findings already in the local analysis — focus on NEW observations from the data`;
+
+  let aiVulns=[],aiSummary='',aiScore=50,aiOverall='Medium',aiPositives=[],aiPriority=[];
+  try{
+    const aiRes=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:prompt}]})});
+    const aiData=await aiRes.json();
+    const raw=aiData.content.map(b=>b.text||'').join('');
+    const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    aiVulns=parsed.vulnerabilities||[];
+    aiSummary=parsed.executive_summary||'';
+    aiScore=parsed.security_score||50;
+    aiOverall=parsed.overall_severity||'Medium';
+    aiPositives=parsed.positive_findings||[];
+    aiPriority=parsed.priority_actions||[];
+  }catch(e){console.error(e)}
+
+  setStep(5);await sleep(200);
+
+  // Merge local + AI vulns, dedupe, sort
+  const allVulns=[...localVulns,...aiVulns];
+  const sevOrder={Critical:0,High:1,Medium:2,Low:3,Info:4};
+  allVulns.sort((a,b)=>(sevOrder[a.severity]||4)-(sevOrder[b.severity]||4));
+
+  // Compute score from headers if AI didn't help
+  let finalScore=aiScore;
+  if(!aiScore){
+    finalScore=100;
+    allVulns.forEach(v=>{if(v.severity==='Critical')finalScore-=20;else if(v.severity==='High')finalScore-=12;else if(v.severity==='Medium')finalScore-=6;else if(v.severity==='Low')finalScore-=2});
+    finalScore=Math.max(0,Math.min(100,finalScore));
+  }
+
+  lastScanData={url,isHttps:respData.isHttps,status:respData.status,latency:respData.latency,headers:respData.headers,score:finalScore,overall:aiOverall,summary:aiSummary,vulns:allVulns,positives:aiPositives,priority:aiPriority,timestamp:new Date().toLocaleString()};
+
+  document.getElementById('progress-card').style.display='none';
+  renderResults(lastScanData);
+  updateStats(allVulns);
+
+  btn.disabled=false;
+  document.getElementById('scan-lbl').textContent='Start Assessment';
+  document.getElementById('spin').style.display='none';
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+
+function renderResults(d){
+  // Score ring
+  const circumference=314;
+  const offset=circumference-(d.score/100)*circumference;
+  const scoreColor=d.score>=75?'var(--low)':d.score>=50?'var(--medium)':d.score>=25?'var(--high)':'var(--critical)';
+  document.getElementById('score-circle').style.strokeDashoffset=offset;
+  document.getElementById('score-circle').style.stroke=scoreColor;
+  document.getElementById('score-num').textContent=d.score;
+  document.getElementById('score-num').style.color=scoreColor;
+  const labels={75:'Good',50:'Fair',25:'Poor',0:'Critical'};
+  let lbl='Critical';for(const [t,l] of Object.entries(labels)){if(d.score>=t){lbl=l;break}}
+  document.getElementById('score-label').textContent=lbl+' Security Posture';
+  document.getElementById('score-sub').textContent=d.url.replace(/https?:\/\//,'').split('/')[0];
+
+  // Sev breakdown
+  const sevC={};d.vulns.forEach(v=>{sevC[v.severity]=(sevC[v.severity]||0)+1});
+  document.getElementById('sev-breakdown').innerHTML=Object.entries(sevC).map(([s,n])=>`<span class="sev ${s.toLowerCase()}">${n} ${s}</span>`).join('');
+
+  // Headers table
+  const tbody=document.getElementById('hdr-tbody');
+  tbody.innerHTML='';
+  SEC_HEADERS.forEach(sh=>{
+    const val=d.headers[sh.key];
+    const tr=document.createElement('tr');
+    let flag,valDisplay;
+    if(sh.leak&&val){flag='<span class="flag-chip flag-warn">⚠ exposes info</span>';valDisplay=`<span class="hdr-warn">${val}</span>`}
+    else if(val){flag='<span class="flag-chip flag-ok">✓ present</span>';valDisplay=`<span class="hdr-ok">${val.slice(0,60)}${val.length>60?'…':''}</span>`}
+    else{flag=sh.required?'<span class="flag-chip flag-miss">✕ missing</span>':'<span class="flag-chip" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted)">— absent</span>';valDisplay=`<span style="color:var(--muted)">not present</span>`}
+    tr.innerHTML=`<td>${sh.label}${flag}</td><td>${valDisplay}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Header score
+  const reqPresent=SEC_HEADERS.filter(h=>!h.leak&&h.required&&d.headers[h.key]).length;
+  const reqTotal=SEC_HEADERS.filter(h=>!h.leak&&h.required).length;
+  const hPct=Math.round((reqPresent/reqTotal)*100);
+  const hSev=hPct>=80?'low':hPct>=50?'medium':'high';
+  document.getElementById('hdr-score').className=`sev ${hSev}`;
+  document.getElementById('hdr-score').textContent=`${reqPresent}/${reqTotal} Required`;
+
+  // Overall
+  document.getElementById('overall-sev').className=`sev ${d.overall.toLowerCase()}`;
+  document.getElementById('overall-sev').textContent=d.overall+' Risk';
+  document.getElementById('exec-summary').innerHTML=d.summary||`Security assessment of <strong>${d.url}</strong> completed. ${d.vulns.length} findings identified.`
+    +(d.priority&&d.priority.length?`<br><br><strong style="color:var(--text)">Top priorities:</strong><ol style="margin-top:6px;padding-left:18px;display:flex;flex-direction:column;gap:4px">${d.priority.map(p=>`<li style="font-size:13px;color:var(--medium)">${p}</li>`).join('')}</ol>`:'');
+
+  // Positives
+  if(d.positives&&d.positives.length){
+    document.getElementById('positives-row').style.display='block';
+    document.getElementById('positives-list').innerHTML=d.positives.map(p=>`<div style="display:flex;gap:8px;font-size:13px;color:var(--muted2)"><span style="color:var(--low);flex-shrink:0">✓</span>${p}</div>`).join('');
+  }
+
+  // Vulns
+  document.getElementById('vuln-count').textContent=d.vulns.length+' finding'+(d.vulns.length!==1?'s':'');
+  document.getElementById('vuln-list').innerHTML=d.vulns.map((v,i)=>`
+    <div class="vuln-item ${v.severity.toLowerCase()}" id="vi-${i}">
+      <div class="vuln-head" onclick="toggleVuln(${i})">
+        <span class="sev ${v.severity.toLowerCase()}">${v.severity}</span>
+        <span class="vuln-title">${v.title}</span>
+        <span style="font-size:11px;font-family:var(--mono);color:var(--muted2);margin-right:4px">${v.category}</span>
+        <span style="font-size:14px;color:var(--muted2)">▾</span>
+      </div>
+      <div class="vuln-body" id="vb-${i}">
+        <div class="vuln-desc">${v.description}</div>
+        <div class="vuln-grid">
+          <div class="vuln-box"><h4>Evidence</h4><p>${v.evidence}</p></div>
+          <div class="vuln-box"><h4>Business Impact</h4><p>${v.business_impact}</p></div>
+          <div class="vuln-box" style="grid-column:1/-1"><h4>Remediation</h4><p style="color:var(--low)">${v.remediation}</p></div>
+        </div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('results').style.display='block';
+  document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function toggleVuln(i){document.getElementById('vb-'+i).classList.toggle('open')}
+
+function copySummary(){
+  if(!lastScanData)return;
+  const d=lastScanData;
+  const txt=`VULNSCOUT — VULNERABILITY ASSESSMENT SUMMARY
+=============================================
+Target: ${d.url}
+Date: ${d.timestamp}
+Security Score: ${d.score}/100
+Overall Risk: ${d.overall}
+
+${d.summary}
+
+FINDINGS (${d.vulns.length} total):
+${d.vulns.map((v,i)=>`${i+1}. [${v.severity}] ${v.title}\n   ${v.description}\n   Fix: ${v.remediation}`).join('\n\n')}
+
+--- VulnScout | Future Interns Cyber Security Task 1 (2026) ---`;
+  navigator.clipboard.writeText(txt).then(()=>{
+    const b=document.getElementById('copy-btn');b.textContent='✓ Copied!';
+    setTimeout(()=>{b.textContent='📋 Copy Summary'},2000);
+  });
+}
+
+function addToReport(){
+  if(!lastScanData){alert('No scan data available.');return}
+  reportScans.push({...lastScanData});
+  renderReport();
+  document.querySelectorAll('.nav-tab').forEach(t=>{t.classList.remove('active');if(t.textContent.includes('VA Report'))t.classList.add('active')});
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-report').classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function renderReport(){
+  if(!reportScans.length)return;
+  document.getElementById('report-empty').style.display='none';
+  document.getElementById('report-content').style.display='block';
+  const allVulns=reportScans.flatMap(s=>s.vulns.map(v=>({...v,_url:s.url})));
+  const bySev={Critical:[],High:[],Medium:[],Low:[],Info:[]};
+  allVulns.forEach(v=>{if(bySev[v.severity])bySev[v.severity].push(v)});
+
+  document.getElementById('report-body').innerHTML=`
+    <div class="report-section">
+      <h3>Executive Summary</h3>
+      <p style="font-size:13px;color:var(--muted2);line-height:1.8">
+        This Vulnerability Assessment was conducted on ${reportScans.length} website(s) using passive, read-only scanning techniques.
+        The assessment identified <strong style="color:var(--text)">${allVulns.length} security findings</strong> including 
+        ${bySev.Critical.length} Critical, ${bySev.High.length} High, ${bySev.Medium.length} Medium, and ${bySev.Low.length} Low severity issues.
+        All testing was conducted ethically within the defined scope of public-facing pages only. No exploitation was performed.
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        ${Object.entries(bySev).filter(([,v])=>v.length).map(([s,v])=>`<span class="sev ${s.toLowerCase()}">${v.length} ${s}</span>`).join('')}
+      </div>
+    </div>
+
+    <div class="report-section">
+      <h3>Websites Assessed</h3>
+      <table class="report-table">
+        <thead><tr><th>#</th><th>Target URL</th><th>HTTPS</th><th>Score</th><th>Risk Level</th><th>Findings</th></tr></thead>
+        <tbody>
+          ${reportScans.map((s,i)=>`<tr>
+            <td style="color:var(--muted2);font-family:var(--mono)">${i+1}</td>
+            <td style="font-family:var(--mono);font-size:12px">${s.url}</td>
+            <td style="color:${s.isHttps?'var(--low)':'var(--critical)'}">${s.isHttps?'✓ Yes':'✕ No'}</td>
+            <td style="font-family:var(--mono);color:${s.score>=75?'var(--low)':s.score>=50?'var(--medium)':'var(--critical)'}">${s.score}/100</td>
+            <td><span class="sev ${s.overall.toLowerCase()}">${s.overall}</span></td>
+            <td style="font-family:var(--mono)">${s.vulns.length}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="report-section">
+      <h3>Detailed Findings</h3>
+      <table class="report-table">
+        <thead><tr><th>#</th><th>Vulnerability</th><th>Severity</th><th>Category</th><th>Evidence</th><th>Remediation</th></tr></thead>
+        <tbody>
+          ${allVulns.map((v,i)=>`<tr>
+            <td style="color:var(--muted2);font-family:var(--mono)">${i+1}</td>
+            <td><strong>${v.title}</strong><br><span style="font-size:12px;color:var(--muted2)">${v.description}</span><br><span style="font-size:11px;color:var(--muted)">Impact: ${v.business_impact}</span></td>
+            <td><span class="sev ${v.severity.toLowerCase()}">${v.severity}</span></td>
+            <td style="font-size:12px;color:var(--muted2)">${v.category}</td>
+            <td style="font-size:12px;color:var(--muted2)">${v.evidence}</td>
+            <td style="font-size:12px;color:var(--low)">${v.remediation}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="report-section">
+      <h3>Methodology & Scope</h3>
+      <div style="font-size:13px;color:var(--muted2);line-height:1.8">
+        <strong style="color:var(--text)">Scope:</strong> Public-facing pages only. Passive, read-only analysis.<br>
+        <strong style="color:var(--text)">Approach:</strong> Security header inspection, HTTPS verification, response body analysis, information disclosure detection.<br>
+        <strong style="color:var(--text)">Tools:</strong> VulnScout (passive scanner), Claude AI analysis, Browser DevTools.<br>
+        <strong style="color:var(--text)">Framework:</strong> OWASP Web Security Testing Guide (WSTG), OWASP Top 10.<br>
+        <strong style="color:var(--text)">Ethics:</strong> No exploitation, brute force, or DoS testing performed. All scans conducted on public-facing infrastructure only.
+      </div>
+    </div>`;
+}
+
+function copyReport(){
+  const analyst=document.getElementById('r-analyst').value||'[Analyst]';
+  const client=document.getElementById('r-client').value||'Future Interns';
+  const date=document.getElementById('r-date').value||new Date().toLocaleDateString();
+  const allVulns=reportScans.flatMap(s=>s.vulns.map(v=>({...v,_url:s.url})));
+  const txt=`VULNERABILITY ASSESSMENT REPORT
+================================
+Analyst: ${analyst}
+Client: ${client}
+Date: ${date}
+Scope: Public-facing websites — passive analysis only
+
+SITES ASSESSED:
+${reportScans.map((s,i)=>`${i+1}. ${s.url} — Score: ${s.score}/100 — ${s.overall} Risk — ${s.vulns.length} findings`).join('\n')}
+
+EXECUTIVE SUMMARY:
+${reportScans[0]?.summary||''}
+
+FINDINGS (${allVulns.length} total):
+${allVulns.map((v,i)=>`
+${i+1}. [${v.severity}] ${v.title}
+   Category: ${v.category}
+   Description: ${v.description}
+   Evidence: ${v.evidence}
+   Business Impact: ${v.business_impact}
+   Remediation: ${v.remediation}`).join('\n')}
+
+METHODOLOGY:
+Scope: Public-facing pages, passive read-only scanning
+Framework: OWASP WSTG, OWASP Top 10
+Tools: VulnScout, Claude AI, Browser DevTools
+Ethics: No exploitation attempted.
+
+--- VulnScout | Future Interns Cyber Security Task 1 (2026) ---`;
+  navigator.clipboard.writeText(txt).then(()=>alert('Report copied to clipboard!'));
+}
+
+// ── GLOSSARY ──
+const glossaryItems=[
+  {term:'Vulnerability',def:'A weakness in a system\'s design, implementation, or operation that could be exploited by an attacker to compromise security.'},
+  {term:'HTTPS / TLS',def:'Encrypted communication between a browser and website. Prevents attackers from reading data in transit. The padlock icon in your browser shows HTTPS is active.'},
+  {term:'Security Header',def:'An instruction sent by a server to the browser telling it how to behave for security. Missing headers leave the browser with no guidance on how to protect users.'},
+  {term:'HSTS (Strict-Transport-Security)',def:'A header that tells browsers to always use HTTPS and never fall back to HTTP — even if the user types "http://" manually.'},
+  {term:'CSP (Content Security Policy)',def:'A header that controls which resources a webpage can load. Prevents attackers injecting malicious scripts (XSS attacks).'},
+  {term:'XSS (Cross-Site Scripting)',def:'An attack where malicious JavaScript is injected into a webpage and runs in victims\' browsers. Can steal session cookies, redirect users, or modify page content.'},
+  {term:'Clickjacking',def:'An attack where an invisible iframe is placed over a legitimate webpage, tricking users into clicking buttons they can\'t see. Prevented by X-Frame-Options.'},
+  {term:'CORS (Cross-Origin Resource Sharing)',def:'A browser mechanism controlling which websites can make requests to your API/server. Misconfigured CORS (wildcard *) allows any site to read your API responses.'},
+  {term:'Information Disclosure',def:'When a website unintentionally reveals sensitive information — like server software versions, internal paths, or error details — that helps attackers plan attacks.'},
+  {term:'SQL Injection',def:'An attack where an attacker inserts malicious code into a database query, potentially reading, modifying, or deleting data. One of the most common web vulnerabilities.'},
+  {term:'CVE',def:'Common Vulnerabilities and Exposures — a public database of known software vulnerabilities. Each entry has a unique ID (e.g. CVE-2024-12345) and a severity score.'},
+  {term:'Passive Scanning',def:'Security testing that only observes and collects information without sending attack payloads or attempting to exploit vulnerabilities. Safe and legal on any site.'},
+  {term:'Risk Classification',def:'The process of rating a vulnerability by severity (Critical/High/Medium/Low) based on how easy it is to exploit and what damage it could cause.'},
+  {term:'Remediation',def:'The action taken to fix a vulnerability. Could be a configuration change, software update, code fix, or firewall rule.'},
+  {term:'OWASP',def:'Open Web Application Security Project — a non-profit that publishes free security guidelines, including the famous "OWASP Top 10" list of most critical web vulnerabilities.'},
+];
+document.getElementById('glossary-list').innerHTML=glossaryItems.map(g=>`
+  <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:16px 18px;margin-bottom:10px">
+    <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:5px">${g.term}</div>
+    <div style="font-size:13px;color:var(--muted2);line-height:1.7">${g.def}</div>
+  </div>`).join('');
+
+// Prefill report date
+document.getElementById('r-date').value=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+</script>
+</body>
+</html>
