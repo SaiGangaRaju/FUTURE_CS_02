@@ -729,7 +729,7 @@ ${i+1}. [${r.severity}] ${r.title} (${r.id})
    Impact: ${r.business_impact}
    Fix: ${r.remediation}`).join('\n')}
 
---- APIGuard | Future Interns Cyber Security Task 3 ---`;
+--- APIGuard ---`;
   navigator.clipboard.writeText(txt).then(()=>{
     const b=document.getElementById('copy-btn');b.textContent='✓ Copied!';
     setTimeout(()=>{b.textContent='📋 Copy Findings'},2000);
